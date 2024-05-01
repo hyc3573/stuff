@@ -7,7 +7,9 @@ pub trait Body {
     fn acc(&self) -> Vecn;
 
     fn update_pos(&mut self, dx: Vecn);
+    fn add_force(&mut self, f: Vecn);
 
     fn predict(&mut self, dt: Real);
     fn update(&mut self, dt: Real);
+    fn iterate(&mut self);
 }
