@@ -1,9 +1,9 @@
 use crate::config::*;
 use crate::body::*;
-use nannou::glam::Quat;
-use nannou::glam::Mat3;
-use nannou::glam::mat3;
-use nannou::glam::vec3;
+use glam::Quat;
+use glam::Mat3;
+use glam::mat3;
+use glam::vec3;
 
 pub struct Cube {
     pos_prev: Vecn,
@@ -80,7 +80,7 @@ impl RigidBody for Cube {
 
 impl Cube {
     pub fn new(pos: Vecn, apos: Quat, invmass: Real, sidelen: Real) -> Self {
-        let inertia = invmass*sidelen*sidelen*mat3(
+        let inertia: Mat3 = invmass*sidelen*sidelen*mat3(
             vec3(2.0/3.0, -0.25, -0.25),
             vec3(-0.25, 2.0/3.0, -0.25),
             vec3(-0.25, -0.25, 2.0/3.0)

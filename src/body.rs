@@ -1,6 +1,6 @@
 use crate::config::*;
-use nannou::glam::Mat3;
-use nannou::glam::Quat;
+use glam::Mat3;
+use glam::Quat;
 
 macro_rules! body_common {
     {} => {

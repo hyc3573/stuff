@@ -1,6 +1,6 @@
 use crate::constraint::Constraint;
-use nannou::glam::Vec3;
-use nannou::glam::Vec3Swizzles;
+use glam::Vec3;
+use glam::Vec3Swizzles;
 use crate::config::*;
 use crate::particle::*;
 use crate::particle_constraint::*;

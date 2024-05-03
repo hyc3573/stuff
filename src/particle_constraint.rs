@@ -1,6 +1,3 @@
-use nannou::text::font::DEFAULT_DIRECTORY_NAME;
-use nannou::wgpu::ComputePipeline;
-
 use crate::config::*;
 use crate::constraint;
 use crate::constraint::*;
