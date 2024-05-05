@@ -2,6 +2,7 @@ use crate::config::*;
 use crate::body::*;
 use std::cell::RefCell;
 use std::rc::Rc;
+use three_d::*;
 
 macro_rules! constraint_getset {
     {$n:expr} => {
@@ -35,7 +36,7 @@ pub trait Constraint<const N: usize> {
         let dC = self.dC();
         let mut dot: Real = 0.0;
         for i in 0..N {
-           dot += dC[i].length_squared()*self.bodies()[i].borrow().invmass()
+           dot += dC[i].dot(dC[i])*self.bodies()[i].borrow().invmass()
         }
         let dot = dot;
         let denom = dot + alpha; 
@@ -50,7 +51,7 @@ pub trait Constraint<const N: usize> {
     fn dx(&self, dlambda: Real) -> [Vecn; N] {
         let dC = self.dC();
 
-        let mut result = [Vecn::ZERO; N];
+        let mut result = [Vecn::zero(); N];
         for i in 0..N {
             result[i] = self.bodies()[i].borrow().invmass()*dC[i]*dlambda;
         }

@@ -5,6 +5,7 @@ use crate::particle::Particle;
 use crate::body::Body;
 use std::cell::RefCell;
 use std::rc::Rc;
+use three_d::*;
 
 pub struct ParticleDist {
     bodies: [Rc<RefCell<dyn Body>>; 2],
@@ -15,11 +16,14 @@ pub struct ParticleDist {
 
 impl Constraint<2> for ParticleDist {
     fn C(&self) -> Real {
-        (self.bodies()[0].borrow().pos() - self.bodies()[1].borrow().pos()).length() - self.dist
+        self.bodies()[0].borrow().pos().distance(self.bodies()[1].borrow().pos()) - self.dist
     }
 
     fn dC(&self) -> [Vecn; 2] {
-        let n = (self.bodies()[0].borrow().pos() - self.bodies()[1].borrow().pos()).normalize_or_zero();
+        let mut n = (self.bodies()[0].borrow().pos() - self.bodies()[1].borrow().pos());
+        if !n.is_zero() {
+            n = n.normalize();
+        }
 
         [n, -n]
     }
@@ -47,11 +51,15 @@ pub struct ParticleFix {
 
 impl Constraint<1> for ParticleFix {
     fn C(&self) -> Real {
-        (self.bodies()[0].borrow().pos() - self.origin).length()
+        self.bodies()[0].borrow().pos().distance(self.origin)
     }
 
     fn dC(&self) -> [Vecn; 1] {
-        [(self.bodies()[0].borrow().pos() - self.origin).normalize_or_zero()]
+        let mut n = self.bodies()[0].borrow().pos() - self.origin;
+        if !n.is_zero() {
+            n = n.normalize();
+        }
+        [n]
     }
 
     constraint_getset!(1);
@@ -79,7 +87,7 @@ impl Constraint<1> for ParticleSimpleXWall {
         Real::max(-self.bodies()[0].borrow().pos().x, 0.0)
     }
     fn dC(&self) -> [Vecn; 1] {
-        let mut g = Vecn::ZERO;
+        let mut g = Vecn::zero();
         if self.bodies()[0].borrow().pos().x < 0.0 {
             g.x = -1.0;
         }

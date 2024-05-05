@@ -1,6 +1,6 @@
 use crate::config::*;
-use glam::Mat3;
-use glam::Quat;
+use three_d::Mat3;
+use three_d::Quat;
 
 macro_rules! body_common {
     {} => {

@@ -1,6 +1,4 @@
 use crate::constraint::Constraint;
-use glam::Vec3;
-use glam::Vec3Swizzles;
 use crate::config::*;
 use crate::particle::*;
 use crate::particle_constraint::*;
@@ -9,6 +7,7 @@ use std::rc::Rc;
 use std::vec::Vec;
 use crate::particle_constraint::*;
 use crate::body::Body;
+use three_d::*;
 
 type BodyRc = Rc<RefCell<dyn Body>>;
 

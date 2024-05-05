@@ -1,5 +1,6 @@
 use crate::config::*;
 use crate::body::*;
+use three_d::*;
 
 pub struct Particle {
     pos_prev: Vecn,
@@ -22,7 +23,7 @@ impl Body for Particle {
         self.pos_pred = self.pos;
     }
     fn update(&mut self, dt: Real) {
-        self.acc = Vecn::ZERO;
+        self.acc = Vecn::zero();
         self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
         // self.vel = (self.pos - self.pos_prev)/dt;
     }
@@ -38,8 +39,8 @@ impl Particle {
             pos_pred: pos,
             pos,
             pos_new: pos,
-            vel: Vecn::ZERO,
-            acc: Vecn::ZERO,
+            vel: Vecn::zero(),
+            acc: Vecn::zero(),
             invmass
         }
     }
