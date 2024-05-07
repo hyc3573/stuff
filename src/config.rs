@@ -1,4 +1,8 @@
 use three_d::Vec3;
+use three_d::Quat;
+use three_d::Mat4;
+use three_d::Mat3;
+use three_d::vec3;
 
 pub type Real = f32;
 pub type Vecn = Vec3;

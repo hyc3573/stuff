@@ -26,53 +26,7 @@ pub struct Cube {
 
 impl Body for Cube {
     body_common!();
-
-    fn predict(&mut self, dt: Real) {
-        self.pos_prev = self.pos;
-        self.vel += self.acc*dt;
-        self.pos += self.vel*dt;
-        self.pos_new = self.pos;
-        self.pos_pred = self.pos;
-
-        self.apos_prev = self.apos;
-        self.avel += self.aacc*dt - dt*self.invinertia*self.avel.cross(self.inertia*self.avel);
-        self.apos = self.apos + Quat::new(0.0, self.avel.x, self.avel.y, self.avel.y)*self.apos*0.5*dt;
-        self.apos = self.apos.normalize();
-        self.apos_new = self.apos;
-        self.apos_pred = self.apos;
-    }
-    fn update(&mut self, dt: Real) {
-        self.acc = Vecn::zero();
-        self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
-
-        self.aacc = Vecn::zero();
-        let dq = self.apos*self.apos_prev.invert();
-        self.avel = 2.0*vec3(dq.v.x, dq.v.y, dq.v.z)/dt;
-
-        if dq.s < 0.0 {
-            self.avel *= -1.0;
-        }
-    }
-    fn iterate(&mut self) {
-        self.pos = self.pos_new;
-        self.apos = self.apos_new;
-    }
-}
-
-impl RigidBody for Cube {
     rigidbody_common!();
-
-    fn update_apos(&mut self, dq: Quat) {
-        self.apos_new = dq * self.apos_new;
-    }
-
-    fn add_force_at(&mut self, f: Vecn, at: Vecn) {
-        self.aacc += self.invinertia*at.cross(f);
-    }
-
-    fn add_torque(&mut self, t: Vecn) {
-        self.aacc += self.invinertia*t;
-    }
 }
 
 impl Cube {

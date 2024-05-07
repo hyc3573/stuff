@@ -4,6 +4,7 @@ mod config;
 mod body;
 #[macro_use]
 mod constraint;
+mod rigidbody_constraint;
 mod cube;
 mod particle;
 mod particle_constraint;
@@ -16,6 +17,9 @@ use crate::particle_constraint::*;
 use crate::particle_constraint::*;
 use constraint::Constraint;
 use physics::*;
+use cube::*;
+use body::*;
+use rigidbody_constraint::RDist;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -75,35 +79,63 @@ fn main() {
         ),
     );
 
+    let mut cube1 = Gm::new(
+        Mesh::new(&context, &CpuMesh::cube()),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "asdf".to_string(),
+                albedo: Srgba::BLUE,
+                ..Default::default()
+            }
+        )
+    );
+
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
     let mut physics = Physics::new();
-    physics.add_body(
+    let part1 = physics.add_body(
         Particle::new(vec3(0.0, 0.0, 0.0), 1.0)
     );
-    physics.add_body(
+    let part2 = physics.add_body(
         Particle::new(vec3(0.3, 0.4, 0.0), 1.0)
     );
-    physics.add_double_constraint(
+    let rigid1 = physics.add_body(
+        Cube::new(
+            vec3(0.6, 0.8, 0.0),
+            Quat::from_angle_x(radians(std::f32::consts::PI*0.25)),
+            1.0,
+            1.0
+        )
+    );
+    rigid1.as_ref().borrow_mut().add_force_at(
+        Vec3::unit_z(), Vec3::unit_x()*100000.0
+    );
+    physics.add_constraint(
         ParticleDist::new(
             [
-                physics.bodies()[0].clone(),
-                physics.bodies()[1].clone()
+                part1.clone(),
+                part2.clone()
             ],
             0.5, 0.0
         )
     );
-    physics.add_single_constraint(
+    physics.add_constraint(
         ParticleFix::new(
-            [physics.bodies()[0].clone()],
+            [part1.clone()],
             vec3(0.0, 0.0, 0.0), 0.0
         )
     );
+    // physics.add_constraint(
+        
+    // );
 
     let mut dtclock = Instant::now();
 
     window.render_loop(move |mut frame_input| {
+        let avel = rigid1.as_ref().borrow().avel();
+        
         let dt: Real = dtclock.elapsed().as_secs_f64() as Real;
         dtclock = Instant::now();
         
@@ -112,23 +144,26 @@ fn main() {
 
         physics.update(dt);
 
-        let pos = physics.bodies()[1].as_ref().borrow().pos();
-        println!("{}, {}, {}", pos.x, pos.y, pos.z);
+        let pos = physics.particles()[1].as_ref().borrow().pos();
 
         sphere1.set_transformation(Mat4::from_translation(
-            physics.bodies()[0].as_ref().borrow().pos()
+            part1.as_ref().borrow().pos()
         ) * Mat4::from_scale(0.2));
         sphere2.set_transformation(Mat4::from_translation(
-            physics.bodies()[1].as_ref().borrow().pos()
+            part2.as_ref().borrow().pos()
             // vec3(0.3, 0.4, 0.0)
         ) * Mat4::from_scale(0.2));
+        // println!("{} {} {} / {} {} {} / {} {} {}", mat.x.x, mat.x.y, mat.x.z, mat.y.x, mat.y.y, mat.y.z, mat.z.x, mat.z.y, mat.z.z);
+        cube1.set_transformation(Mat4::from_translation(
+            rigid1.as_ref().borrow().pos()
+        ) * Mat4::from_scale(0.5) * Mat4::from(rigid1.as_ref().borrow().apos()));
 
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
             .render(
                 &camera,
-                sphere1.into_iter().chain(&sphere2),
+                sphere1.into_iter().chain(&sphere2).chain(&cube1),
                 &[&light0, &light1]
             );
 
