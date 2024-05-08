@@ -16,14 +16,22 @@ pub struct RDist {
 
 impl RDist {
     fn points(&self) -> [Vecn; 2] {
-        let pos: Vec<Vecn> = zip(self.bodies.clone(), self.offsets).map(
-            |x| -> Vecn {x.0.as_ref().borrow().pos_at(x.1)}
-        ).collect();
-
-        [pos[0], pos[1]]
+        [0, 1].map(
+            |i| -> Vecn {
+                self.bodies()[i].as_ref().borrow().pos_at(self.offsets[i])
+            }
+        )
     }
 
-    fn new(bodies: [Rc<RefCell<dyn Body>>; 2], offsets: [Vecn; 2], dist: Real, compliance: Real) -> Self {
+    fn true_offsets(&self) -> [Vecn; 2] {
+        [0, 1].map(
+            |i| -> Vecn {
+                self.bodies()[i].as_ref().borrow().apos().rotate_vector(self.offsets[i])
+            }
+        )
+    }
+
+    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], offsets: [Vecn; 2], dist: Real, compliance: Real) -> Self {
         Self {
             bodies,
             offsets,
@@ -40,12 +48,17 @@ impl Constraint for RDist {
     fn C(&self) -> Real {
         let pos = self.points();
 
-        (pos[0] - pos[1]).magnitude() - self.dist
+        let result = (pos[0] - pos[1]).magnitude() - self.dist;
+        result
     }
 
     fn dC(&self) -> Vec<Vecn> {
         let pos = self.points();
-        let n = (pos[0] - pos[1]).normalize();
+        let mut n = pos[0] - pos[1];
+
+        if !n.is_zero() {
+            n = n.normalize()
+        }
 
         vec!(n, -n)
     }
@@ -54,21 +67,26 @@ impl Constraint for RDist {
         let mut result = Vec::<Quat>::new();
         for i in 0..self.len() {
             result.push(
-                0.5*Quat::from_sv(0.0, self.bodies()[i].as_ref().borrow().invinertia()*self.offsets[i].cross(self.dC()[i]))*self.bodies()[i].as_ref().borrow().apos()
+                0.5*Quat::from_sv(0.0, self.bodies()[i].as_ref().borrow().invinertia()*self.true_offsets()[i].cross(self.dC()[i])*dlambda)*self.bodies()[i].as_ref().borrow().apos()
             )
         }
 
+        // result[1] *= -1.0;
+
         result
+        // vec![Quat::zero(), Quat::zero()]
     } 
 
     fn invmass_sum(&self) -> Real {
         let dC = self.dC();
+        let pos = self.points();
         let mut sum: Real = 0.0;
 
         for i in 0..self.len() {
-            sum += self.bodies()[i].as_ref().borrow().invmass() + self.offsets[i].cross(dC[i]).dot(self.bodies()[i].as_ref().borrow().invinertia()*self.offsets[i].cross(dC[i]));
+            sum += self.bodies()[i].as_ref().borrow().invmass() +
+                self.true_offsets()[i].cross(dC[0]).dot(self.bodies()[i].as_ref().borrow().invinertia()*self.true_offsets()[i].cross(dC[0]));
         }
-
+        
         sum
     }
 }

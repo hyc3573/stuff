@@ -7,7 +7,7 @@ use three_d::*;
 macro_rules! body_common {
     {} => {
         fn invmass(&self) -> Real {self.invmass}
-        fn pos(&self) -> Vecn {self.pos}
+        fn pos(&self) -> Vecn {self.pos_new}
         fn vel(&self) -> Vecn {self.vel}
         fn acc(&self) -> Vecn {self.acc}
 
@@ -31,7 +31,7 @@ macro_rules! rigidbody_common {
         }
 
         fn apos(&self) -> Quat {
-            self.apos
+            self.apos_new
         }
 
         fn avel(&self) -> Vecn {
@@ -51,7 +51,7 @@ macro_rules! rigidbody_common {
 
             self.apos_prev = self.apos;
             self.avel += self.aacc*dt - dt*self.invinertia*self.avel.cross(self.inertia*self.avel);
-            self.apos = self.apos + Quat::new(0.0, self.avel.x, self.avel.y, self.avel.y)*self.apos*0.5*dt;
+            self.apos = self.apos + Quat::new(0.0, self.avel.x, self.avel.y, self.avel.z)*self.apos*0.5*dt;
             self.apos = self.apos.normalize();
             self.apos_new = self.apos;
             self.apos_pred = self.apos;
@@ -59,6 +59,7 @@ macro_rules! rigidbody_common {
         fn update(&mut self, dt: Real) {
             self.acc = Vecn::zero();
             self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
+            // self.vel = (self.pos - self.pos_prev)/dt;
 
             self.aacc = Vecn::zero();
             let dq = self.apos*self.apos_prev.invert();
@@ -79,6 +80,7 @@ macro_rules! rigidbody_common {
 
         fn add_apos(&mut self, dq: Quat) {
             self.apos_new += dq;
+            self.apos_new = self.apos_new.normalize();
         }
 
         fn add_force_at(&mut self, f: Vecn, at: Vecn) {

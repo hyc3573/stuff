@@ -46,6 +46,11 @@ fn main() {
     );
     // let mut control = OrbitControl::new(*camera.target(), 1.0, 100.0);
     let mut control = FirstPersonControl::new(0.01);
+    let mut control = OrbitControl::new(
+        vec3(0.0, 0.0, 0.0),
+        0.2,
+        200.0
+    );
 
     let mut sphere1 = Gm::new(
         Mesh::new(&context, &CpuMesh::sphere(16)),
@@ -91,26 +96,89 @@ fn main() {
         )
     );
 
+    let mut line1 = Gm::new(
+        Mesh::new(&context, &CpuMesh::cylinder(10)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "adjfks".to_string(),
+                albedo: Srgba::GREEN,
+                ..Default::default()
+            }
+        )
+    );
+    let mut line2 = Gm::new(
+        Mesh::new(&context, &CpuMesh::cylinder(10)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "adjfks".to_string(),
+                albedo: Srgba::GREEN,
+                ..Default::default()
+            }
+        )
+    );
+
+    let mut xaxis = Gm::new(
+        Mesh::new(&context, &CpuMesh::cylinder(10)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "adjfks".to_string(),
+                albedo: Srgba::RED,
+                ..Default::default()
+            }
+        )
+    );
+    xaxis.set_transformation(Mat4::from_nonuniform_scale(1.0, 0.05, 0.05));
+    let mut yaxis = Gm::new(
+        Mesh::new(&context, &CpuMesh::cylinder(10)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "adjfks".to_string(),
+                albedo: Srgba::GREEN,
+                ..Default::default()
+            }
+        )
+    );
+    yaxis.set_transformation(
+        Mat4::from_axis_angle(Vec3::unit_z(), Rad::turn_div_4()) *
+            Mat4::from_nonuniform_scale(1.0, 0.05, 0.05)
+    );
+    let mut zaxis = Gm::new(
+        Mesh::new(&context, &CpuMesh::cylinder(10)),
+        PhysicalMaterial::new_opaque(
+            &context,
+            &CpuMaterial {
+                name: "adjfks".to_string(),
+                albedo: Srgba::BLUE,
+                ..Default::default()
+            }
+        )
+    );
+    zaxis.set_transformation(
+        Mat4::from_axis_angle(Vec3::unit_y(), Rad::turn_div_4()) *
+            Mat4::from_nonuniform_scale(1.0, 0.05, 0.05)
+    );
+
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-    let mut physics = Physics::new();
+    let mut physics = Physics::new(vec3(0.0, -100.0, 0.0), 60, 1);
     let part1 = physics.add_body(
         Particle::new(vec3(0.0, 0.0, 0.0), 1.0)
     );
     let part2 = physics.add_body(
-        Particle::new(vec3(0.3, 0.4, 0.0), 1.0)
+        Particle::new(vec3(1.5, 0.0, 0.0), 1.0)
     );
     let rigid1 = physics.add_body(
         Cube::new(
-            vec3(0.6, 0.8, 0.0),
-            Quat::from_angle_x(radians(std::f32::consts::PI*0.25)),
+            vec3(3.0, 0.0, 0.0),
+            Quat::one(),
             1.0,
             1.0
         )
-    );
-    rigid1.as_ref().borrow_mut().add_force_at(
-        Vec3::unit_z(), Vec3::unit_x()*100000.0
     );
     physics.add_constraint(
         ParticleDist::new(
@@ -118,7 +186,7 @@ fn main() {
                 part1.clone(),
                 part2.clone()
             ],
-            0.5, 0.0
+            1.5, 0.0
         )
     );
     physics.add_constraint(
@@ -128,8 +196,53 @@ fn main() {
         )
     );
     // physics.add_constraint(
-        
+    //     ParticleFix::new(
+    //         [part2.clone()],
+    //         vec3(1.5, 0.0, 0.0), 0.0
+    //     )
     // );
+    let attach = vec3(-0.5, -0.5, -0.5);
+    let dist = (rigid1.as_ref().borrow().pos_at(attach) - part2.as_ref().borrow().pos()).magnitude();
+    physics.add_constraint(
+        RDist::new(
+            [part2.clone(), rigid1.clone()],
+            [vec3(0.0, 0.0, 0.0), attach],
+            dist, 0.0000
+        )
+    );
+
+    
+    let mut cubes: Vec<Gm<Mesh, PhysicalMaterial>> = Vec::new();
+    for i in 0..10 {
+        let s3 = 3.0_f32.sqrt();
+        let x = vec3(s3, s3, s3)*(i as Real) + vec3(3.5, 0.5, 0.5);
+        physics.add_body(
+            Cube::new(
+                x, Quat::one(), 1.0, 1.0
+            )
+        );
+        let len = physics.bodies().len();
+        physics.add_constraint(
+            RDist::new(
+                [physics.bodies()[len-2].clone(), physics.bodies()[len-1].clone()],
+                [vec3(0.5, 0.5, 0.5), vec3(-0.5, -0.5, -0.5)],
+                0.0, 0.00000001
+            )
+        );
+        cubes.push(
+            Gm::new(
+                Mesh::new(&context, &CpuMesh::cube()),
+                PhysicalMaterial::new_opaque(
+                    &context,
+                    &CpuMaterial {
+                        name: "asdf".to_string(),
+                        albedo: Srgba::BLUE,
+                        ..Default::default()
+                    }
+                )
+            )
+        )
+    }
 
     let mut dtclock = Instant::now();
 
@@ -142,9 +255,9 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt);
+        physics.update(dt/1.0);
 
-        let pos = physics.particles()[1].as_ref().borrow().pos();
+        let pos = physics.bodies()[1].as_ref().borrow().pos();
 
         sphere1.set_transformation(Mat4::from_translation(
             part1.as_ref().borrow().pos()
@@ -158,12 +271,37 @@ fn main() {
             rigid1.as_ref().borrow().pos()
         ) * Mat4::from_scale(0.5) * Mat4::from(rigid1.as_ref().borrow().apos()));
 
+        for (i, cube) in cubes.iter_mut().enumerate() {
+            let c = physics.bodies()[i+3].clone();
+
+            cube.set_transformation(Mat4::from_translation(
+                c.as_ref().borrow().pos()
+            ) * Mat4::from_scale(0.5) * Mat4::from(c.as_ref().borrow().apos()));
+        }
+
+        let pos1 = Point3::origin() + part1.as_ref().borrow().pos();
+        let pos2 = Point3::origin() + part2.as_ref().borrow().pos();
+        let pos3 = Point3::origin() + rigid1.as_ref().borrow().pos_at(attach);
+
+        let v1 = pos2 - pos1;
+        let v2 = pos3 - pos2;
+
+        let v1m = v1.magnitude();
+        let v1n = v1.normalize();
+        let v1d = Quat::between_vectors(Vec3::unit_x(), v1n);
+        let v2m = v2.magnitude();
+        let v2n = v2.normalize();
+        let v2d = Quat::between_vectors(Vec3::unit_x(), v2n);
+
+        line1.set_transformation(Mat4::from_translation(pos1.to_vec()) * Mat4::from(v1d) * Mat4::from_nonuniform_scale(v1m, 0.1, 0.1));
+        line2.set_transformation(Mat4::from_translation(pos2.to_vec()) * Mat4::from(v2d) * Mat4::from_nonuniform_scale(v2m, 0.1, 0.1));
+
         frame_input
             .screen()
             .clear(ClearState::color_and_depth(0.8, 0.8, 0.8, 1.0, 1.0))
             .render(
                 &camera,
-                sphere1.into_iter().chain(&sphere2).chain(&cube1),
+                [&sphere1, &sphere2, &cube1, &line1, &line2, &xaxis, &yaxis, &zaxis].into_iter().chain(&cubes),
                 &[&light0, &light1]
             );
 

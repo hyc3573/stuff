@@ -54,7 +54,7 @@ pub trait Constraint {
         let dot = self.invmass_sum();
         let denom = dot + alpha; 
 
-        if denom == 0.0 {
+        if denom.abs() < Real::EPSILON {
             return 0.0
         }
 

@@ -13,7 +13,7 @@ use three_d::*;
 type BodyRc = Rc<RefCell<dyn Body>>;
 
 pub struct Physics {
-    particles: Vec<Rc<RefCell<dyn Body>>>,
+    bodies: Vec<Rc<RefCell<dyn Body>>>,
     constraint: Vec<Box<dyn Constraint>>,
     temp_constraint: Vec<Box<dyn Constraint>>,
 
@@ -24,23 +24,23 @@ pub struct Physics {
 }
 
 impl Physics {
-    pub fn new() -> Self {
+    pub fn new(gravity: Vecn, substeps: usize, iterations: usize) -> Self {
         Self {
-            particles: Vec::new(),
+            bodies: Vec::new(),
             constraint: Vec::new(),
             temp_constraint: Vec::new(),
 
-            gravity: Vecn::new(0.0, -100.0, 0.0),
+            gravity,
             
-            substeps: SUBS,
-            iterations: ITER
+            substeps: 60,
+            iterations: 1 
         }
     }
 
     pub fn add_body<T: Body + 'static>(&mut self, body: T) -> Rc<RefCell<T>>{
         let particle = Rc::new(RefCell::new(body));
 
-        self.particles.push(
+        self.bodies.push(
             particle.clone()
         );
 
@@ -56,41 +56,46 @@ impl Physics {
     pub fn update(&mut self, dt: Real) {
         let dt = dt/(self.substeps as Real);
 
-        for substep in 0..SUBS {
-            for body in &self.particles {
+        for constraint in &mut self.constraint {
+            constraint.reset_lambda();
+        }
+        for constraint in &mut self.temp_constraint {
+            constraint.reset_lambda();
+        }
+
+        for substep in 0..self.substeps {
+            for body in &self.bodies {
                 body.as_ref().borrow_mut().add_force(self.gravity);
                 body.as_ref().borrow_mut().predict(dt);
             }
 
-            for single in &mut self.constraint {
-                single.reset_lambda();
-            }
-            for single in &mut self.temp_constraint {
-                single.reset_lambda();
-            } 
-
-            for iteration in 0..ITER {
-                for single in &mut self.constraint {
-                    single.iterate(dt);
+            for iteration in 0..self.iterations {
+                for constraint in &mut self.constraint {
+                    constraint.iterate(dt);
                 } 
-                for single in &mut self.temp_constraint {
-                    single.iterate(dt);
+                for constraint in &mut self.temp_constraint {
+                    constraint.iterate(dt);
                 } 
 
-                for body in &self.particles {
+                for body in &self.bodies {
                     body.as_ref().borrow_mut().iterate();
                 }
             }
 
-            for body in &self.particles {
+            for body in &self.bodies {
                 body.as_ref().borrow_mut().update(dt);
             }
-         }
+
+            let pos = self.bodies[2].as_ref().borrow().pos();
+            // println!("{} {} {}", pos.x, pos.y, pos.z);
+        }
 
         self.temp_constraint.clear();
+
+        
     }
 
-    pub fn particles(&self) -> Vec<Rc<RefCell<dyn Body>>> {
-        self.particles.clone()
+    pub fn bodies(&self) -> Vec<Rc<RefCell<dyn Body>>> {
+        self.bodies.clone()
     }
 }
