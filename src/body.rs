@@ -6,15 +6,15 @@ use three_d::*;
 
 macro_rules! body_common {
     {} => {
-        fn invmass(&self) -> Real {self.invmass}
-        fn pos(&self) -> Vecn {self.pos_new}
-        fn vel(&self) -> Vecn {self.vel}
-        fn acc(&self) -> Vecn {self.acc}
+        fn invmass(&self) -> f32 {self.invmass}
+        fn pos(&self) -> Vec3 {self.pos_new}
+        fn vel(&self) -> Vec3 {self.vel}
+        fn acc(&self) -> Vec3 {self.acc}
 
-        fn update_pos(&mut self, dx: Vecn) {
+        fn update_pos(&mut self, dx: Vec3) {
             self.pos_new += dx;
         }
-        fn add_force(&mut self, f: Vecn) {
+        fn add_force(&mut self, f: Vec3) {
             self.acc += self.invmass*f;
         }
     }
@@ -34,15 +34,15 @@ macro_rules! rigidbody_common {
             self.apos_new
         }
 
-        fn avel(&self) -> Vecn {
+        fn avel(&self) -> Vec3 {
             self.avel
         }
 
-        fn aacc(&self) -> Vecn {
+        fn aacc(&self) -> Vec3 {
             self.aacc
         }
 
-        fn predict(&mut self, dt: Real) {
+        fn predict(&mut self, dt: f32) {
             self.pos_prev = self.pos;
             self.vel += self.acc*dt;
             self.pos += self.vel*dt;
@@ -56,12 +56,12 @@ macro_rules! rigidbody_common {
             self.apos_new = self.apos;
             self.apos_pred = self.apos;
         }
-        fn update(&mut self, dt: Real) {
-            self.acc = Vecn::zero();
+        fn update(&mut self, dt: f32) {
+            self.acc = Vec3::zero();
             self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
             // self.vel = (self.pos - self.pos_prev)/dt;
 
-            self.aacc = Vecn::zero();
+            self.aacc = Vec3::zero();
             let dq = self.apos*self.apos_prev.invert();
             self.avel = 2.0*vec3(dq.v.x, dq.v.y, dq.v.z)/dt;
 
@@ -83,28 +83,28 @@ macro_rules! rigidbody_common {
             self.apos_new = self.apos_new.normalize();
         }
 
-        fn add_force_at(&mut self, f: Vecn, at: Vecn) {
+        fn add_force_at(&mut self, f: Vec3, at: Vec3) {
             self.aacc += self.invinertia*at.cross(f);
         }
 
-        fn add_torque(&mut self, t: Vecn) {
+        fn add_torque(&mut self, t: Vec3) {
             self.aacc += self.invinertia*t;
         }
     }
 }
 
 pub trait Body {
-    fn invmass(&self) -> Real; 
+    fn invmass(&self) -> f32; 
 
-    fn pos(&self) -> Vecn;
-    fn vel(&self) -> Vecn;
-    fn acc(&self) -> Vecn;
+    fn pos(&self) -> Vec3;
+    fn vel(&self) -> Vec3;
+    fn acc(&self) -> Vec3;
 
-    fn update_pos(&mut self, dx: Vecn);
-    fn add_force(&mut self, f: Vecn);
+    fn update_pos(&mut self, dx: Vec3);
+    fn add_force(&mut self, f: Vec3);
 
-    fn predict(&mut self, dt: Real);
-    fn update(&mut self, dt: Real);
+    fn predict(&mut self, dt: f32);
+    fn update(&mut self, dt: f32);
     fn iterate(&mut self);
 
     fn inertia(&self) -> Mat3 {
@@ -117,21 +117,21 @@ pub trait Body {
     fn apos(&self) -> Quat {
         Quat::one()
     }
-    fn avel(&self) -> Vecn {
-        Vecn::zero()
+    fn avel(&self) -> Vec3 {
+        Vec3::zero()
     }
-    fn aacc(&self) -> Vecn {
-        Vecn::zero()
+    fn aacc(&self) -> Vec3 {
+        Vec3::zero()
     }
 
-    fn pos_at(&self, at: Vecn) -> Vecn {
+    fn pos_at(&self, at: Vec3) -> Vec3 {
         self.pos() + self.apos().rotate_vector(at)
     }
 
     fn update_apos(&mut self, dq: Quat) {}
     fn add_apos(&mut self, dq: Quat) {}
-    fn add_force_at(&mut self, f: Vecn, at: Vecn) {
+    fn add_force_at(&mut self, f: Vec3, at: Vec3) {
         self.add_force(f);
     }
-    fn add_torque(&mut self, t: Vecn) {}
+    fn add_torque(&mut self, t: Vec3) {}
 }

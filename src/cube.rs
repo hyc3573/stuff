@@ -2,40 +2,40 @@ use crate::config::*;
 use crate::body::*;
 use three_d::*;
 
-pub struct Cube {
-    pos_prev: Vecn,
-    pos_pred: Vecn,
-    pos: Vecn,
-    pos_new: Vecn,
+#[derive(Clone, Copy)]
+pub struct RigidBody {
+    pos_prev: Vec3,
+    pos_pred: Vec3,
+    pos: Vec3,
+    pos_new: Vec3,
 
     apos_prev: Quat,
     apos_pred: Quat,
     apos: Quat,
     apos_new: Quat,
 
-    vel: Vecn,
-    acc: Vecn,
+    vel: Vec3,
+    acc: Vec3,
 
-    avel: Vecn,
-    aacc: Vecn,
+    avel: Vec3,
+    aacc: Vec3,
 
-    invmass: Real,
+    invmass: f32,
     invinertia: Mat3,
     inertia: Mat3,
 }
 
-impl Body for Cube {
+impl Body for RigidBody {
     body_common!();
     rigidbody_common!();
 }
 
-impl Cube {
-    pub fn new(pos: Vecn, apos: Quat, invmass: Real, sidelen: Real) -> Self {
-        let inertia: Mat3 = invmass*sidelen*sidelen*Mat3::from_cols(
-            vec3(2.0/3.0, -0.25, -0.25),
-            vec3(-0.25, 2.0/3.0, -0.25),
-            vec3(-0.25, -0.25, 2.0/3.0)
-        );
+impl RigidBody {
+    pub fn new(pos: Vec3, apos: Quat, invmass: f32, inertia_mass: Mat3) -> Self {
+        let inertia = if !invmass.is_zero() {
+            inertia_mass*invmass
+        } else {Mat3::zero()};
+
         Self {
             pos_prev: pos,
             pos_pred: pos,
@@ -47,15 +47,15 @@ impl Cube {
             apos,
             apos_new: apos,
 
-            vel: Vecn::zero(),
-            acc: Vecn::zero(),
+            vel: Vec3::zero(),
+            acc: Vec3::zero(),
 
-            avel: Vecn::zero(),
-            aacc: Vecn::zero(),
+            avel: Vec3::zero(),
+            aacc: Vec3::zero(),
             
             invmass,
             invinertia: inertia.invert().unwrap(),
-            inertia
+            inertia: inertia
         }
     }
 }

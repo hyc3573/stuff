@@ -17,14 +17,14 @@ pub struct Physics {
     constraint: Vec<Box<dyn Constraint>>,
     temp_constraint: Vec<Box<dyn Constraint>>,
 
-    gravity: Vecn,
+    gravity: Vec3,
 
     substeps: usize,
     iterations: usize
 }
 
 impl Physics {
-    pub fn new(gravity: Vecn, substeps: usize, iterations: usize) -> Self {
+    pub fn new(gravity: Vec3, substeps: usize, iterations: usize) -> Self {
         Self {
             bodies: Vec::new(),
             constraint: Vec::new(),
@@ -53,8 +53,8 @@ impl Physics {
         self.temp_constraint.push(Box::new(constraint));
     }
 
-    pub fn update(&mut self, dt: Real) {
-        let dt = dt/(self.substeps as Real);
+    pub fn update(&mut self, dt: f32) {
+        let dt = dt/(self.substeps as f32);
 
         for constraint in &mut self.constraint {
             constraint.reset_lambda();

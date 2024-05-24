@@ -8,30 +8,30 @@ use three_d::*;
 
 pub struct RDist {
     bodies: [Rc<RefCell<dyn Body>>; 2],
-    offsets: [Vecn; 2],
-    lambda: Real,
-    compliance: Real,
-    dist: Real
+    offsets: [Vec3; 2],
+    lambda: f32,
+    compliance: f32,
+    dist: f32
 }
 
 impl RDist {
-    fn points(&self) -> [Vecn; 2] {
+    fn points(&self) -> [Vec3; 2] {
         [0, 1].map(
-            |i| -> Vecn {
+            |i| -> Vec3 {
                 self.bodies()[i].as_ref().borrow().pos_at(self.offsets[i])
             }
         )
     }
 
-    fn true_offsets(&self) -> [Vecn; 2] {
+    fn true_offsets(&self) -> [Vec3; 2] {
         [0, 1].map(
-            |i| -> Vecn {
+            |i| -> Vec3 {
                 self.bodies()[i].as_ref().borrow().apos().rotate_vector(self.offsets[i])
             }
         )
     }
 
-    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], offsets: [Vecn; 2], dist: Real, compliance: Real) -> Self {
+    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], offsets: [Vec3; 2], dist: f32, compliance: f32) -> Self {
         Self {
             bodies,
             offsets,
@@ -45,14 +45,14 @@ impl RDist {
 impl Constraint for RDist {
     constraint_getset!(2);
 
-    fn C(&self) -> Real {
+    fn C(&self) -> f32 {
         let pos = self.points();
 
         let result = (pos[0] - pos[1]).magnitude() - self.dist;
         result
     }
 
-    fn dC(&self) -> Vec<Vecn> {
+    fn dC(&self) -> Vec<Vec3> {
         let pos = self.points();
         let mut n = pos[0] - pos[1];
 
@@ -63,7 +63,7 @@ impl Constraint for RDist {
         vec!(n, -n)
     }
 
-    fn dq(&self, dlambda: Real) -> Vec<Quat> {
+    fn dq(&self, dlambda: f32) -> Vec<Quat> {
         let mut result = Vec::<Quat>::new();
         for i in 0..self.len() {
             result.push(
@@ -77,10 +77,10 @@ impl Constraint for RDist {
         // vec![Quat::zero(), Quat::zero()]
     } 
 
-    fn invmass_sum(&self) -> Real {
+    fn invmass_sum(&self) -> f32 {
         let dC = self.dC();
         let pos = self.points();
-        let mut sum: Real = 0.0;
+        let mut sum: f32 = 0.0;
 
         for i in 0..self.len() {
             sum += self.bodies()[i].as_ref().borrow().invmass() +
@@ -90,3 +90,4 @@ impl Constraint for RDist {
         sum
     }
 }
+

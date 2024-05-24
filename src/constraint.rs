@@ -9,16 +9,16 @@ macro_rules! constraint_getset {
         fn bodies(&self) -> Vec<Rc<RefCell<dyn Body>>> {
             self.bodies.clone().to_vec()
         }
-        fn compliance(&self) -> Real {
+        fn compliance(&self) -> f32 {
             self.compliance
         }
-        fn lambda(&self) -> Real {
+        fn lambda(&self) -> f32 {
             self.lambda
         }
         fn reset_lambda(&mut self) {
             self.lambda = 0.0;
         }
-        fn update_lambda(&mut self, dlambda: Real) {
+        fn update_lambda(&mut self, dlambda: f32) {
             self.lambda += dlambda;
         }
         fn len(&self) -> usize {
@@ -28,18 +28,18 @@ macro_rules! constraint_getset {
 }
 
 pub trait Constraint {
-    fn C(&self) -> Real;
-    fn dC(&self) -> Vec<Vecn>;
+    fn C(&self) -> f32;
+    fn dC(&self) -> Vec<Vec3>;
 
     fn bodies(&self) -> Vec<Rc<RefCell<dyn Body>>>;
-    fn compliance(&self) -> Real;
-    fn lambda(&self) -> Real;
-    fn update_lambda(&mut self, dlambda: Real);
+    fn compliance(&self) -> f32;
+    fn lambda(&self) -> f32;
+    fn update_lambda(&mut self, dlambda: f32);
     fn len(&self) -> usize;
     fn reset_lambda(&mut self);
-    fn invmass_sum(&self) -> Real {
+    fn invmass_sum(&self) -> f32 {
         let dC = self.dC();
-        let mut dot: Real = 0.0;
+        let mut dot: f32 = 0.0;
         for i in 0..self.len() {
            dot += dC[i].dot(dC[i])*self.bodies()[i].borrow().invmass()
         }
@@ -47,35 +47,35 @@ pub trait Constraint {
         dot
     }
 
-    fn dlambda(&self, dt: Real) -> Real {
+    fn dlambda(&self, dt: f32) -> f32 {
         let alpha = self.compliance()/(dt*dt);
         let C = self.C();
         
         let dot = self.invmass_sum();
         let denom = dot + alpha; 
 
-        if denom.abs() < Real::EPSILON {
+        if denom.abs() < f32::EPSILON {
             return 0.0
         }
 
         (-C-alpha*self.lambda())/(denom)
     }
 
-    fn dx(&self, dlambda: Real) -> Vec<Vecn> {
+    fn dx(&self, dlambda: f32) -> Vec<Vec3> {
         let dC = self.dC();
 
-        let mut result = vec![Vecn::zero(); self.len()];
+        let mut result = vec![Vec3::zero(); self.len()];
         for i in 0..self.len() {
             result[i] = self.bodies()[i].borrow().invmass()*dC[i]*dlambda;
         }
 
         result
     }
-    fn dq(&self, dlambda: Real) -> Vec<Quat> {
+    fn dq(&self, dlambda: f32) -> Vec<Quat> {
         vec![Quat::zero(); self.len()]
     }
 
-    fn iterate(&mut self, dt: Real) {
+    fn iterate(&mut self, dt: f32) {
         let dlambda = self.dlambda(dt);
         let dx = self.dx(dlambda);
         let dq = self.dq(dlambda);

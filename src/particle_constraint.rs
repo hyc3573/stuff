@@ -9,17 +9,17 @@ use three_d::*;
 
 pub struct ParticleDist {
     bodies: [Rc<RefCell<dyn Body>>; 2],
-    lambda: Real,
-    compliance: Real,
-    dist: Real
+    lambda: f32,
+    compliance: f32,
+    dist: f32
 }
 
 impl Constraint for ParticleDist {
-    fn C(&self) -> Real {
+    fn C(&self) -> f32 {
         self.bodies()[0].borrow().pos().distance(self.bodies()[1].borrow().pos()) - self.dist
     }
 
-    fn dC(&self) -> Vec<Vecn> {
+    fn dC(&self) -> Vec<Vec3> {
         let mut n = (self.bodies()[0].borrow().pos() - self.bodies()[1].borrow().pos());
         if !n.is_zero() {
             n = n.normalize();
@@ -32,7 +32,7 @@ impl Constraint for ParticleDist {
 }
 
 impl ParticleDist {
-    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], dist: Real, compliance: Real) -> Self {
+    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], dist: f32, compliance: f32) -> Self {
         Self {
             bodies,
             lambda: 0.0,
@@ -44,17 +44,17 @@ impl ParticleDist {
 
 pub struct ParticleFix {
     bodies: [Rc<RefCell<dyn Body>>; 1],
-    lambda: Real,
-    compliance: Real,
-    origin: Vecn
+    lambda: f32,
+    compliance: f32,
+    origin: Vec3
 }
 
 impl Constraint for ParticleFix {
-    fn C(&self) -> Real {
+    fn C(&self) -> f32 {
         self.bodies()[0].borrow().pos().distance(self.origin)
     }
 
-    fn dC(&self) -> Vec<Vecn> {
+    fn dC(&self) -> Vec<Vec3> {
         let mut n = self.bodies()[0].borrow().pos() - self.origin;
         if !n.is_zero() {
             n = n.normalize();
@@ -66,7 +66,7 @@ impl Constraint for ParticleFix {
 }
 
 impl ParticleFix {
-    pub fn new(parts: [Rc<RefCell<dyn Body>>; 1], origin: Vecn, compliance: Real) -> Self {
+    pub fn new(parts: [Rc<RefCell<dyn Body>>; 1], origin: Vec3, compliance: f32) -> Self {
         Self {
             bodies: parts,
             lambda: 0.0,
@@ -78,16 +78,16 @@ impl ParticleFix {
 
 pub struct ParticleSimpleXWall {
     bodies: [Rc<RefCell<dyn Body>>; 1],
-    lambda: Real,
-    compliance: Real,
+    lambda: f32,
+    compliance: f32,
 }
 
 impl Constraint for ParticleSimpleXWall {
-    fn C(&self) -> Real {
-        Real::max(-self.bodies()[0].borrow().pos().x, 0.0)
+    fn C(&self) -> f32 {
+        f32::max(-self.bodies()[0].borrow().pos().x, 0.0)
     }
-    fn dC(&self) -> Vec<Vecn> {
-        let mut g = Vecn::zero();
+    fn dC(&self) -> Vec<Vec3> {
+        let mut g = Vec3::zero();
         if self.bodies()[0].borrow().pos().x < 0.0 {
             g.x = -1.0;
         }
@@ -98,7 +98,7 @@ impl Constraint for ParticleSimpleXWall {
 }
 
 impl ParticleSimpleXWall {
-    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 1], compliance: Real) -> Self {
+    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 1], compliance: f32) -> Self {
         Self {
             bodies,
             lambda: 0.0,
