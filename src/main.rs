@@ -196,8 +196,8 @@ fn main() {
             1.0,
             cubeinertia_mass(
                 1.0
-            )
-        )
+            ),
+        ),
     );
     let rigid2 = physics.add_body(
         RigidBody::new(
@@ -250,14 +250,11 @@ fn main() {
     let c1 = CHullCollider::new(
         &(rigid1.clone() as Rc<RefCell<dyn Body>>), cube_chull(1.0)
     );
+    physics.add_collider(c1);
     let c2 = CHullCollider::new(
         &(rigid2.clone() as Rc<RefCell<dyn Body>>), cube_chull(1.0)
     );
-
-    let c: Vec<Box<dyn Collider>> = vec![
-        Box::new(c1),
-        Box::new(c2)
-    ];
+    physics.add_collider(c2);
 
     let mut dtclock = Instant::now();
 
@@ -270,13 +267,7 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*1.0);
-
-        if gjk(&c[0], &c[1]).is_some() {
-            cube2.material.albedo = Color::BLUE;
-        } else {
-            cube2.material.albedo = Color::BLACK;
-        }
+        physics.update(dt*0.1);
 
         let pos = physics.bodies()[1].as_ref().borrow().pos();
 

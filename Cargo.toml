@@ -7,3 +7,4 @@ edition = "2021"
 
 [dependencies]
 three-d = "0.17"
+itertools = "0.10.0"

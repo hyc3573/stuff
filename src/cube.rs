@@ -1,8 +1,9 @@
 use crate::config::*;
 use crate::body::*;
 use three_d::*;
+use crate::Collider;
 
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 pub struct RigidBody {
     pos_prev: Vec3,
     pos_pred: Vec3,
@@ -55,7 +56,7 @@ impl RigidBody {
             
             invmass,
             invinertia: inertia.invert().unwrap(),
-            inertia: inertia
+            inertia: inertia,
         }
     }
 }

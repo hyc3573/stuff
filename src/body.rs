@@ -3,6 +3,7 @@ use three_d::Mat3;
 use three_d::Quat;
 use three_d::Rotation;
 use three_d::*;
+use crate::Collider;
 
 macro_rules! body_common {
     {} => {
@@ -58,8 +59,8 @@ macro_rules! rigidbody_common {
         }
         fn update(&mut self, dt: f32) {
             self.acc = Vec3::zero();
-            self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
-            // self.vel = (self.pos - self.pos_prev)/dt;
+            // self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
+            self.vel = (self.pos - self.pos_prev)/dt;
 
             self.aacc = Vec3::zero();
             let dq = self.apos*self.apos_prev.invert();
