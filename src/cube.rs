@@ -1,7 +1,7 @@
 use crate::config::*;
 use crate::body::*;
 use three_d::*;
-use crate::Collider;
+use crate::collision::collider::Collider;
 
 #[derive(Clone)]
 pub struct RigidBody {

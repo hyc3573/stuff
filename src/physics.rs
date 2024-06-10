@@ -4,7 +4,7 @@ use crate::particle::*;
 use crate::particle_constraint::*;
 use crate::body::*;
 use crate::rigidbody_constraint::RDist;
-use crate::Collider;
+use crate::collision::collider::*;
 use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -76,9 +76,9 @@ impl Physics {
 
                 let result = gjk(a, b);
                 if let Some(simpl) = result {
-                    let (normal, penetration, va, vb) = epa(a, b, simpl);
+                    let (normal, depth, va, vb) = epa(a, b, simpl);
 
-                    if penetration <= 0.0 {
+                    if depth <= 0.0 {
                         continue;
                     }
 
@@ -88,7 +88,7 @@ impl Physics {
                                 [a.get_body(), b.get_body()],
                                 [va, vb],
                                 0.0,
-                                0.1
+                                0.0
                             )
                         )
                     )

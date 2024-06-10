@@ -3,7 +3,7 @@ use three_d::Mat3;
 use three_d::Quat;
 use three_d::Rotation;
 use three_d::*;
-use crate::Collider;
+use crate::collision::collider::Collider;
 
 macro_rules! body_common {
     {} => {
