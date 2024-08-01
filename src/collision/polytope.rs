@@ -3,6 +3,7 @@ use super::simplex::*;
 use std::collections::HashSet;
 use std::vec::Vec;
 use three_d::*;
+use std::fmt;
 
 mod unordered_pair {
     #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -97,23 +98,23 @@ impl Polytope {
                 self.vertices[face[2]],
             );
 
-            if normal.dot(dir) > 0.0 {
+            if normal.dot(p - self.vertices[face[0]]) > 0.0 {
                 // same direction
                 let ab: UnorderedPair<usize> = (face[0], face[1]).into();
                 let bc: UnorderedPair<usize> = (face[1], face[2]).into();
                 let ac: UnorderedPair<usize> = (face[0], face[2]).into();
 
-                if new_edges.contains(&ab) {
+                if !new_edges.contains(&ab) {
                     new_edges.remove(&ab);
                 } else {
                     new_edges.insert(ab);
                 }
-                if new_edges.contains(&bc) {
+                if !new_edges.contains(&bc) {
                     new_edges.remove(&bc);
                 } else {
                     new_edges.insert(ab);
                 }
-                if new_edges.contains(&ac) {
+                if !new_edges.contains(&ac) {
                     new_edges.remove(&ac);
                 } else {
                     new_edges.insert(ac);
@@ -143,5 +144,20 @@ impl Polytope {
 
     pub fn vertices(&self) -> &Vec<Point3<f32>> {
         &self.vertices
+    }
+}
+
+impl fmt::Display for Polytope {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        for vertex in &self.vertices {
+            writeln!(f, "v {} {} {} 1.0", vertex.x, vertex.y, vertex.z)?
+        }
+
+        for face in &self.faces {
+            writeln!(f, "f {} {} {}", face[0]+1, face[1]+1, face[2]+1)?
+            
+        }
+
+        Ok(())
     }
 }

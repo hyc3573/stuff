@@ -74,7 +74,7 @@ impl Physics {
             for i in self.colliders.iter().combinations(2) {
                 let a = i[0]; let b = i[1];
 
-                let result = gjk(a, b);
+                let result = gjk(a, b, false);
                 if let Some(simpl) = result {
                     let (normal, depth, va, vb) = epa(a, b, simpl);
 

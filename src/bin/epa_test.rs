@@ -179,7 +179,7 @@ fn main() {
             c2b.as_ref().borrow().pos()
         ) * Mat4::from_scale(0.5) * Mat4::from(c2b.as_ref().borrow().apos()));
 
-        let gjkres = gjk(&c1c, &c2c);
+        let gjkres = gjk(&c1c, &c2c, true);
         let mut draw_points = false;
         if let Some(simplex) = gjkres {
             draw_points = true;
