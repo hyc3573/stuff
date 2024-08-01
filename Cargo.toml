@@ -2,7 +2,7 @@
 name = "stuff"
 version = "0.1.0"
 edition = "2021"
-default-run = "epa_test"
+default-run = "stuff"
 
 [lib]
 name = "stuff_lib"

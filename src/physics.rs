@@ -4,6 +4,7 @@ use crate::particle::*;
 use crate::particle_constraint::*;
 use crate::body::*;
 use crate::rigidbody_constraint::RDist;
+use crate::rigidbody_constraint::RColl;
 use crate::collision::collider::*;
 use std::borrow::Borrow;
 use std::cell::RefCell;
@@ -78,16 +79,21 @@ impl Physics {
                 if let Some(simpl) = result {
                     let (normal, depth, va, vb) = epa(a, b, simpl);
 
+                    if normal.magnitude2().is_nan() {
+                        continue;
+                    }
+
                     if depth <= 0.0 {
                         continue;
                     }
 
                     self.temp_constraint.push(
                         Box::new(
-                            RDist::new(
+                            RColl::new(
                                 [a.get_body(), b.get_body()],
                                 [va, vb],
-                                0.0,
+                                normal,
+                                depth,
                                 0.0
                             )
                         )

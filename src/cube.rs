@@ -55,7 +55,7 @@ impl RigidBody {
             aacc: Vec3::zero(),
             
             invmass,
-            invinertia: inertia.invert().unwrap(),
+            invinertia: inertia.invert().unwrap_or(Mat3::zero()),
             inertia: inertia,
         }
     }

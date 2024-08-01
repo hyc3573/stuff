@@ -71,7 +71,7 @@ impl Constraint for RDist {
             )
         }
 
-        // result[1] *= -1.0;
+        result[0] *= -1.0;
 
         result
         // vec![Quat::zero(), Quat::zero()]
@@ -91,3 +91,62 @@ impl Constraint for RDist {
     }
 }
 
+pub struct RColl {
+    bodies: [Rc<RefCell<dyn Body>>; 2],
+    contacts: [Vec3; 2],
+    normal: Vec3,
+    depth: f32,
+    lambda: f32,
+    compliance: f32,
+}
+
+impl RColl {
+    pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], contacts: [Vec3; 2], normal: Vec3, depth: f32, compliance: f32) -> Self {
+        Self {
+            bodies,
+            contacts,
+            normal,
+            depth,
+            lambda: 0.0,
+            compliance
+        }
+    }
+}
+
+impl Constraint for RColl {
+    constraint_getset!(2);
+
+    fn C(&self) -> f32 {
+        self.depth
+    }
+
+    fn dC(&self) -> Vec<Vec3> {
+        vec!(-self.normal, self.normal)
+    }
+
+    fn dq(&self, dlambda: f32) -> Vec<Quat> {
+        let mut result = Vec::<Quat>::new();
+        for i in 0..self.len() {
+            result.push(
+                0.5*Quat::from_sv(0.0, self.bodies()[i].as_ref().borrow().invinertia()*self.contacts[i].cross(self.dC()[i])*dlambda)*self.bodies()[i].as_ref().borrow().apos()
+            )
+        }
+
+        // result[1] *= -1.0;
+
+        result
+        // vec![Quat::zero(), Quat::zero()]
+    } 
+
+    fn invmass_sum(&self) -> f32 {
+        let dC = self.dC();
+        let mut sum: f32 = 0.0;
+
+        for i in 0..self.len() {
+            sum += self.bodies()[i].as_ref().borrow().invmass() +
+                self.contacts[i].cross(dC[0]).dot(self.bodies()[i].as_ref().borrow().invinertia()*self.contacts[i].cross(dC[0]));
+        }
+        
+        sum
+    }
+}

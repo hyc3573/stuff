@@ -301,10 +301,10 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
         simplex = s;
     }
 
-    println!("---------------");
+    // println!("---------------");
 
     let mut polytope = Polytope::from_simplex(s).unwrap();
-    println!("{}", polytope);
+    // println!("{}", polytope);
 
     let mut mindist_global = f32::MAX;
     let mut closest_global: usize = 0;
@@ -390,8 +390,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
             let pb = ba * bary.0 + bb.to_vec() * bary.1 + bc.to_vec() * bary.2;
 
             // assert!(((pa-pb).magnitude() - mindist_global).abs() < f32::EPSILON);
-
-            return (n, mindist_global, a.to_local(pa), b.to_local(pb));
+            return (n.normalize(), mindist, a.to_local(pa), b.to_local(pb));
         } else {
             mindist_global = mindist;
             closest_global = closest_triangle;
@@ -408,7 +407,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
         let n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
 
         polytope.expand(support(&a, &b, n), n);
-        println!("{}", polytope);
+        // println!("{}", polytope);
     }
 }
 
