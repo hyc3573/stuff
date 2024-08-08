@@ -9,7 +9,11 @@ macro_rules! body_common {
     {} => {
         fn invmass(&self) -> f32 {self.invmass}
         fn pos(&self) -> Vec3 {self.pos_new}
+        fn pos_prev(&self) -> Vec3 {self.pos_prev}
         fn vel(&self) -> Vec3 {self.vel}
+        fn set_vel(&mut self, new_vel: Vec3) {
+            self.vel = new_vel;
+        }
         fn acc(&self) -> Vec3 {self.acc}
 
         fn update_pos(&mut self, dx: Vec3) {
@@ -35,8 +39,16 @@ macro_rules! rigidbody_common {
             self.apos_new
         }
 
+        fn apos_prev(&self) -> Quat {
+            self.apos_prev
+        }
+
         fn avel(&self) -> Vec3 {
             self.avel
+        }
+
+        fn set_avel(&mut self, new_avel: Vec3) {
+            self.avel = new_avel;
         }
 
         fn aacc(&self) -> Vec3 {
@@ -57,6 +69,7 @@ macro_rules! rigidbody_common {
             self.apos_new = self.apos;
             self.apos_pred = self.apos;
         }
+
         fn update(&mut self, dt: f32) {
             self.acc = Vec3::zero();
             // self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
@@ -91,6 +104,11 @@ macro_rules! rigidbody_common {
         fn add_torque(&mut self, t: Vec3) {
             self.aacc += self.invinertia*t;
         }
+
+        fn update_velocity(&mut self, dt: f32) {
+            self.vel *= DAMP;
+            self.avel *= DAMP;
+        }
     }
 }
 
@@ -98,7 +116,9 @@ pub trait Body {
     fn invmass(&self) -> f32; 
 
     fn pos(&self) -> Vec3;
+    fn pos_prev(&self) -> Vec3;
     fn vel(&self) -> Vec3;
+    fn set_vel(&mut self, new_vel: Vec3);
     fn acc(&self) -> Vec3;
 
     fn update_pos(&mut self, dx: Vec3);
@@ -106,6 +126,9 @@ pub trait Body {
 
     fn predict(&mut self, dt: f32);
     fn update(&mut self, dt: f32);
+    fn update_velocity(&mut self, dt: f32) {
+        self.set_vel(self.vel()*DAMP);
+    }
     fn iterate(&mut self);
 
     fn inertia(&self) -> Mat3 {
@@ -118,9 +141,13 @@ pub trait Body {
     fn apos(&self) -> Quat {
         Quat::one()
     }
+    fn apos_prev(&self) -> Quat {
+        Quat::one()
+    }
     fn avel(&self) -> Vec3 {
         Vec3::zero()
     }
+    fn set_avel(&mut self, new_avel: Vec3) {}
     fn aacc(&self) -> Vec3 {
         Vec3::zero()
     }

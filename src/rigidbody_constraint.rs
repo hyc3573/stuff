@@ -93,6 +93,7 @@ impl Constraint for RDist {
 
 pub struct RColl {
     bodies: [Rc<RefCell<dyn Body>>; 2],
+    original_velocity: Vec3,
     contacts: [Vec3; 2],
     normal: Vec3,
     depth: f32,
@@ -102,8 +103,13 @@ pub struct RColl {
 
 impl RColl {
     pub fn new(bodies: [Rc<RefCell<dyn Body>>; 2], contacts: [Vec3; 2], normal: Vec3, depth: f32, compliance: f32) -> Self {
+        let original_velocity = (bodies[0].as_ref().borrow().vel() + bodies[0].as_ref().borrow().avel().cross(contacts[0])) -
+                (bodies[1].as_ref().borrow().vel() + bodies[1].as_ref().borrow().avel().cross(contacts[1]))
+        ;
+        
         Self {
             bodies,
+            original_velocity,
             contacts,
             normal,
             depth,
@@ -133,6 +139,7 @@ impl Constraint for RColl {
         }
 
         // result[1] *= -1.0;
+        result[0] *= -1.0;
 
         result
         // vec![Quat::zero(), Quat::zero()]
@@ -148,5 +155,36 @@ impl Constraint for RColl {
         }
         
         sum
+    }
+
+    fn velocity_update(&mut self, dt: f32) {
+        let v = (self.bodies[0].as_ref().borrow().vel() + self.bodies[0].as_ref().borrow().avel().cross(self.contacts[0])) - 
+            (self.bodies[1].as_ref().borrow().vel() + self.bodies[1].as_ref().borrow().avel().cross(self.contacts[1]));
+
+        let v_normal = self.normal.dot(v);
+        let v_tangential = v - self.normal*v_normal;
+
+        let mut dv = Vec3::zero();
+
+        if v_normal.abs() > 2.0*10.0*dt {
+            let v_normal_original = self.normal.dot(self.original_velocity);
+            let e = 0.9;
+            // println!("{}", v_normal_original);
+            dv += self.normal*(-v_normal + f32::max(-e*v_normal_original, 0.0));
+        }
+
+        let p = dv / self.invmass_sum();
+
+        for (i, body) in self.bodies.iter().enumerate() {
+            let new_vel = body.as_ref().borrow().vel() +
+                    p * body.as_ref().borrow().invmass();
+            body.as_ref().borrow_mut().set_vel(new_vel);
+
+            let new_avel = body.as_ref().borrow().avel() +
+                body.as_ref().borrow().invinertia() * (
+                    self.contacts[i].cross(p)
+                );
+            body.as_ref().borrow_mut().set_avel(new_avel);
+        }
     }
 }

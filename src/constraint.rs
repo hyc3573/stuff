@@ -86,4 +86,6 @@ pub trait Constraint {
             self.bodies()[i].as_ref().borrow_mut().add_apos(dq[i]);
         }
     }
+
+    fn velocity_update(&mut self, dt: f32) {}
 }

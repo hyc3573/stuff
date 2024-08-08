@@ -215,18 +215,21 @@ pub fn gjk(
                     if ABDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
+                    println!("ABD");
                     simplex = Simplex::Tetrahedron(A, B, D, E);
                 } else if BCDn.dot(DO) > 0.0 {
                     let E = support(&a, &b, BCDn);
                     if BCDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
+                    println!("BCD");
                     simplex = Simplex::Tetrahedron(B, C, D, E);
                 } else if ACDn.dot(DO) > 0.0 {
                     let E = support(&a, &b, ACDn);
                     if ACDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
+                    println!("ACD");
                     simplex = Simplex::Tetrahedron(A, C, D, E);
                 } else {
                     return Some(simplex);

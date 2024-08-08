@@ -32,10 +32,10 @@ impl Body for RigidBody {
 }
 
 impl RigidBody {
-    pub fn new(pos: Vec3, apos: Quat, invmass: f32, inertia_mass: Mat3) -> Self {
-        let inertia = if !invmass.is_zero() {
-            inertia_mass*invmass
-        } else {Mat3::zero()};
+    pub fn new(pos: Vec3, apos: Quat, invmass: f32, inertia_mass: (Mat3, Mat3)) -> Self {
+        let (inertia, invinertia) = if !invmass.is_zero() {
+            (inertia_mass.0/invmass, inertia_mass.0/invmass)
+        } else {(Mat3::zero(), Mat3::zero())};
 
         Self {
             pos_prev: pos,
@@ -55,8 +55,8 @@ impl RigidBody {
             aacc: Vec3::zero(),
             
             invmass,
-            invinertia: inertia.invert().unwrap_or(Mat3::zero()),
-            inertia: inertia,
+            invinertia,
+            inertia,
         }
     }
 }

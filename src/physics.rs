@@ -1,3 +1,4 @@
+use crate::collision;
 use crate::constraint::Constraint;
 use crate::config::*;
 use crate::particle::*;
@@ -66,16 +67,27 @@ impl Physics {
     pub fn update(&mut self, dt: f32) {
         let dt = dt/(self.substeps as f32);
 
-        for substep in 0..self.substeps {
+        let mut potential_collisions = Vec::<(usize, usize)>::new();
+        for pair in self.colliders.iter().enumerate().combinations(2) {
+            let (i, a) = pair[0];
+            let (j, b) = pair[1];
+
+            if true {
+                potential_collisions.push((i, j));
+            }
+        }
+        let collision_pairs = potential_collisions;
+
+        for _ in 0..self.substeps {
             for body in &self.bodies {
                 body.as_ref().borrow_mut().add_force(self.gravity);
                 body.as_ref().borrow_mut().predict(dt);
             }
 
-            for i in self.colliders.iter().combinations(2) {
-                let a = i[0]; let b = i[1];
+            for (i, j, ..) in collision_pairs.iter() {
+                let a = &self.colliders[*i]; let b = &self.colliders[*j];
 
-                let result = gjk(a, b, false);
+                let result = gjk(a, b, true);
                 if let Some(simpl) = result {
                     let (normal, depth, va, vb) = epa(a, b, simpl);
 
@@ -91,10 +103,12 @@ impl Physics {
                         Box::new(
                             RColl::new(
                                 [a.get_body(), b.get_body()],
-                                [va, vb],
+                                [a.get_body().as_ref().borrow().apos().rotate_vector(va),
+                                 b.get_body().as_ref().borrow().apos().rotate_vector(vb)],
+                                // [va, vb],
                                 normal,
                                 depth,
-                                0.0
+                                0.000
                             )
                         )
                     )
@@ -108,12 +122,12 @@ impl Physics {
                 constraint.reset_lambda();
             }
 
-            for iteration in 0..self.iterations {
+            for _ in 0..self.iterations {
                 for constraint in &mut self.constraint {
-                    constraint.iterate(dt);
+                    constraint.iterate(dt/(self.iterations as f32));
                 } 
                 for constraint in &mut self.temp_constraint {
-                    constraint.iterate(dt);
+                    constraint.iterate(dt/(self.iterations as f32));
                 } 
 
                 for body in &self.bodies {
@@ -125,9 +139,22 @@ impl Physics {
                 body.as_ref().borrow_mut().update(dt);
             }
 
-            let pos = self.bodies[2].as_ref().borrow().pos();
+            // Velocity update
+            for constraint in &mut self.constraint {
+                constraint.velocity_update(dt);
+            }
+            for constraint in &mut self.temp_constraint {
+                constraint.velocity_update(dt);
+            }
+
+
+            // let pos = self.bodies[3].as_ref().borrow().pos();
             // println!("{} {} {}", pos.x, pos.y, pos.z);
             self.temp_constraint.clear();
+        }
+
+        for body in self.bodies.iter() {
+            body.as_ref().borrow_mut().update_velocity(dt);
         }
     }
 
