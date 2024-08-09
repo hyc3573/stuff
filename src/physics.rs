@@ -41,8 +41,8 @@ impl Physics {
 
             gravity,
             
-            substeps: 60,
-            iterations: 1 
+            substeps,
+            iterations
         }
     }
 
@@ -80,9 +80,12 @@ impl Physics {
         let collision_pairs = potential_collisions;
 
         for _ in 0..self.substeps {
-            self.bodies[3].as_ref().borrow_mut().add_force(-self.gravity);
+            // self.bodies[3].as_ref().borrow_mut().add_force(-self.gravity);
             for body in &self.bodies {
-                body.as_ref().borrow_mut().add_force(self.gravity);
+                let invmass = body.as_ref().borrow().invmass();
+                if invmass > 0.0 {
+                    body.as_ref().borrow_mut().add_force(self.gravity/invmass);
+                }
                 body.as_ref().borrow_mut().predict(dt);
             }
 
@@ -93,23 +96,26 @@ impl Physics {
                 if let Some(simpl) = result {
                     let (normal, depth, va, vb) = epa(a, b, simpl);
 
-                    if normal.magnitude2().is_nan() {
+                    if normal.magnitude2().is_nan() || depth <= 0.0 {
                         continue;
                     }
 
-                    if depth <= 0.0 {
-                        continue;
-                    }
+                    // println!("------");
+                    // println!("{depth}");
+                    // println!("{:?} {:?}", a.get_body().as_ref().borrow().pos(), a.get_body().as_ref().borrow().apos());
+                    // println!("{}", (a.get_body().as_ref().borrow().pos_at(va) - b.get_body().as_ref().borrow().pos_at(vb)).magnitude());
 
                     self.temp_constraint.push(
                         Box::new(
                             RColl::new(
                                 [a.get_body(), b.get_body()],
-                                [a.get_body().as_ref().borrow().apos().rotate_vector(va),
-                                 b.get_body().as_ref().borrow().apos().rotate_vector(vb)],
-                                // [va, vb],
+                                // [a.get_body().as_ref().borrow().apos().rotate_vector(vb), b.get_body().as_ref().borrow().apos().rotate_vector(va)],
+                                // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
+                                [va, vb],
                                 normal,
                                 depth,
+                                // actual_normal,
+                                // actual_depth,
                                 0.000
                             )
                         )
@@ -125,10 +131,10 @@ impl Physics {
             }
 
             for _ in 0..self.iterations {
-                for constraint in &mut self.constraint {
-                    constraint.iterate(dt/(self.iterations as f32));
-                } 
                 for constraint in &mut self.temp_constraint {
+                    constraint.iterate(dt/(self.iterations as f32));
+                }
+                for constraint in &mut self.constraint {
                     constraint.iterate(dt/(self.iterations as f32));
                 } 
 
@@ -140,17 +146,18 @@ impl Physics {
             for body in &self.bodies {
                 body.as_ref().borrow_mut().update(dt);
             }
-
-            // Velocity update
-            for constraint in &mut self.constraint {
-                constraint.velocity_update(dt);
-            }
-            for constraint in &mut self.temp_constraint {
-                constraint.velocity_update(dt);
-            }
+            // println!("{:?}", self.bodies[3].as_ref().borrow().vel());
 
             for body in self.bodies.iter() {
                 body.as_ref().borrow_mut().update_velocity(dt);
+            }
+
+            // Velocity update
+            for constraint in &mut self.temp_constraint {
+                constraint.velocity_update(dt);
+            }
+            for constraint in &mut self.constraint {
+                constraint.velocity_update(dt);
             }
 
             // let pos = self.bodies[3].as_ref().borrow().pos();

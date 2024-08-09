@@ -63,6 +63,10 @@ impl Constraint for ParticleFix {
         vec!(n)
     }
 
+    fn velocity_update(&mut self, dt: f32) {
+        self.bodies[0].as_ref().borrow_mut().set_vel(Vec3::zero());
+    }
+
     constraint_getset!(1);
 }
 

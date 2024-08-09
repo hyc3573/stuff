@@ -70,11 +70,11 @@ pub fn gjk(
     b: &Box<dyn Collider>,
     return_tetrahedron: bool,
 ) -> Option<Simplex> {
-    let mut simplex = Simplex::Point(support(&a, &b, Vec3::unit_x())); // last inserted item must be at the end
+    let mut simplex = Simplex::Point(support(&a, &b, Vec3::unit_x()), Vec3::unit_x()); // last inserted item must be at the end
 
     loop {
         match simplex {
-            Simplex::Point(A) => {
+            Simplex::Point(A, ad) => {
                 // check if it is origin -> return true
                 if A.distance(Point3::origin()) == 0.0 && !return_tetrahedron {
                     return Some(simplex);
@@ -88,9 +88,9 @@ pub fn gjk(
                     return None;
                 }
                 // expand the simplex to line
-                simplex = Simplex::Line(A, D)
+                simplex = Simplex::Line(A, D, ad, dir)
             }
-            Simplex::Line(A, B) => {
+            Simplex::Line(A, B, ad, bd) => {
                 // check if it contains the origin -> return true
                 let AB = B - A;
                 let AO = Point3::origin() - A;
@@ -112,9 +112,9 @@ pub fn gjk(
                     return None;
                 }
                 // expand the simplex to triangle
-                simplex = Simplex::Triangle(A, B, D);
+                simplex = Simplex::Triangle(A, B, D, ad, bd, dir);
             }
-            Simplex::Triangle(A, B, C) => {
+            Simplex::Triangle(A, B, C, ad, bd, cd) => {
                 // case 1: if its plain contains origin
                 let AB = B - A;
                 let AC = C - A;
@@ -141,7 +141,7 @@ pub fn gjk(
                         if dir.dot(D - Point3::origin()) < 0.0 {
                             return None;
                         }
-                        simplex = Simplex::Triangle(A, C, D);
+                        simplex = Simplex::Triangle(A, C, D, ad, cd, dir);
                     } else if BC.cross(CO).cross(BC).dot(BC.cross(AB).cross(BC)) > 0.0 {
                         let dir = BC.cross(CO).cross(BC);
                         assert!(dir.dot(CO) > 0.0);
@@ -149,7 +149,7 @@ pub fn gjk(
                         if dir.dot(D - Point3::origin()) > 0.0 {
                             return None;
                         }
-                        simplex = Simplex::Triangle(A, B, D);
+                        simplex = Simplex::Triangle(A, B, D, ad, bd, dir);
                     } else if !return_tetrahedron {
                         return Some(simplex);
                     }
@@ -169,10 +169,10 @@ pub fn gjk(
                     if dir.dot(D - Point3::origin()) < 0.0 {
                         return None;
                     }
-                    simplex = Simplex::Tetrahedron(A, B, C, D);
+                    simplex = Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dir);
                 }
             }
-            Simplex::Tetrahedron(A, B, C, D) => {
+            Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dd) => {
                 // there are four possibilities
                 // case 1: if the origin is in ABD area:
                 //         get a normal vector of ABD which points to the origin
@@ -209,55 +209,71 @@ pub fn gjk(
                     ACDn *= -1.0;
                 }
                 let ACDn = ACDn;
+                let mut ABCn = (A - B).cross(B - C);
+                if ABCn.dot(DC) < 0.0 {
+                    ABCn *= -1.0;
+                }
+                let ABCn = ABCn;
 
+                let overABC = ABCn.dot(DO) > 0.0;
                 let overABD = ABDn.dot(DO) > 0.0;
                 let overBCD = BCDn.dot(DO) > 0.0;
                 let overACD = ACDn.dot(DO) > 0.0;
 
-                if overABD && !overBCD && !overACD {
-                    let E = support(&a, &b, ABDn);
-                    if ABDn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(A, B, D, E);
-                } else if !overABD && overBCD && !overACD {
-                    let E = support(&a, &b, BCDn);
-                    if BCDn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(B, C, D, E);
-                } else if !overABD && !overBCD && overACD {
-                    let E = support(&a, &b, ACDn);
-                    if ACDn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(A, C, D, E);
+                if overABD {
+                    simplex = Simplex::Triangle(A, B, D, ad, bd, dd);
+                } else if overBCD {
+                    simplex = Simplex::Triangle(B, C, D, bd, cd, dd);
+                } else if overACD {
+                    simplex = Simplex::Triangle(A, C, D, ad, cd, dd);
                 } else if !overABD && !overBCD && !overACD {
                     return Some(simplex);
-                } else if overABD && overBCD && overACD {
-                    return None;
-                } else if overABD && overBCD && !overACD {
-                    let DBn = -DB.cross(DO).cross(DB);
-                    let E = support(&a, &b, DBn);
-                    if DBn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(B, C, D, E);
-                } else if !overABD && overBCD && overACD {
-                    let DCn = -DC.cross(DO).cross(DC);
-                    let E = support(&a, &b, DCn);
-                    if DCn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(A, C, D, E);
-                } else if overABD && !overBCD && overACD {
-                    let DAn = -DA.cross(DO).cross(DA);
-                    let E = support(&a, &b, DAn);
-                    if DAn.dot(E - Point3::origin()) < 0.0 {
-                        return None;
-                    }
-                    simplex = Simplex::Tetrahedron(A, B, D, E);
                 }
+
+                // if overABD && !overBCD && !overACD {
+                //     let E = support(&a, &b, ABDn);
+                //     if ABDn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(A, B, D, E, ad, bd, dd, ABDn);
+                // } else if !overABD && overBCD && !overACD {
+                //     let E = support(&a, &b, BCDn);
+                //     if BCDn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(B, C, D, E, bd, cd, dd, BCDn);
+                // } else if !overABD && !overBCD && overACD {
+                //     let E = support(&a, &b, ACDn);
+                //     if ACDn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(A, C, D, E, ad, cd, dd, ACDn);
+                // } else if !overABD && !overBCD && !overACD {
+                //     return Some(simplex);
+                // } else if overABD && overBCD && overACD {
+                //     return None;
+                // } else if overABD && overBCD && !overACD {
+                //     let DBn = -DB.cross(DO).cross(DB);
+                //     let E = support(&a, &b, DBn);
+                //     if DBn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(B, C, D, E, bd, cd, dd, DBn);
+                // } else if !overABD && overBCD && overACD {
+                //     let DCn = -DC.cross(DO).cross(DC);
+                //     let E = support(&a, &b, DCn);
+                //     if DCn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(A, C, D, E, ad, cd, dd, DCn);
+                // } else if overABD && !overBCD && overACD {
+                //     let DAn = -DA.cross(DO).cross(DA);
+                //     let E = support(&a, &b, DAn);
+                //     if DAn.dot(E - Point3::origin()) < 0.0 {
+                //         return None;
+                //     }
+                //     simplex = Simplex::Tetrahedron(A, B, D, E, ad, bd, dd, DAn);
+                // }
             }
         }
         if simplex.is_dup() {
@@ -268,8 +284,8 @@ pub fn gjk(
 
 pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f32, Vec3, Vec3) {
     let mut simplex = s;
-    if let Simplex::Point(A) = simplex {
-        let mut s = Simplex::Point(A);
+    if let Simplex::Point(A, ad) = simplex {
+        let mut s = Simplex::Point(A, ad);
         for dir in [
             Vec3::unit_x(),
             Vec3::unit_y(),
@@ -278,7 +294,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
             -Vec3::unit_y(),
             -Vec3::unit_z(),
         ] {
-            s = Simplex::Line(A, support(&a, &b, dir));
+            s = Simplex::Line(A, support(&a, &b, dir), ad, dir);
             if !s.is_dup() {
                 break;
             }
@@ -286,7 +302,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
 
         simplex = s;
     }
-    if let Simplex::Line(A, B) = simplex {
+    if let Simplex::Line(A, B, ad, bd) = simplex {
         // to which direction?
         let axis = [Vec3::unit_x(), Vec3::unit_y(), Vec3::unit_z()];
         let dir = B - A;
@@ -304,32 +320,32 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
         let mut d = dir.cross(axis[maxaxis]);
         let rot = Mat3::from_axis_angle(dir, degrees(60.0));
 
-        let mut s = Simplex::Triangle(A, A, B);
+        let mut s = Simplex::Triangle(A, A, B, ad, ad, bd);
         for i in 0..5 {
             let D = support(&a, &b, d);
-            s = Simplex::Triangle(A, B, D);
+            s = Simplex::Triangle(A, B, D, ad, bd, d);
 
             if !s.is_dup() {
                 break;
             }
         }
     }
-    if let Simplex::Triangle(A, B, C) = simplex {
+    if let Simplex::Triangle(A, B, C, ad, bd, cd) = simplex {
         let dir = (A - B).cross(B - C);
         let D = support(&a, &b, dir);
 
-        let mut s = Simplex::Tetrahedron(A, B, C, D);
+        let mut s = Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dir);
         if s.is_dup() {
             let D = support(&a, &b, -dir);
 
-            s = Simplex::Tetrahedron(A, B, C, D);
+            s = Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dir);
         }
 
         simplex = s;
     }
 
     // println!("---------------");
-
+    
     let mut polytope = Polytope::from_simplex(s).unwrap();
     // println!("{}", polytope);
 
@@ -338,6 +354,8 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
     loop {
         // find closest edge
         let mut mindist = f32::MAX;
+        // let mut mindist_triangle_a: (Point3<f32>, Point3<f32>, Point3<f32>) = (Point3::origin(), Point3::origin(), Point3::origin());
+        // let mut mindist_triangle_a: (Point3<f32>, Point3<f32>, Point3<f32>) = (Point3::origin(), Point3::origin(), Point3::origin());
         let mut closest_triangle: usize = 0;
         for (i, face) in polytope.faces().iter().enumerate() {
             let triangle = [
@@ -369,6 +387,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
         }
 
         if mindist >= mindist_global {
+            // println!("{} {}", mindist, mindist_global);
             let face = polytope.faces()[closest_triangle];
             let triangle = [
                 &polytope.vertices()[face[0]],
@@ -379,6 +398,10 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
             let n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
 
             let proj = triangle_point_proj(triangle, &Point3::origin());
+            // println!("-----");
+            // for t in triangle {
+            //     println!("{} {} {}", t.x, t.y, t.z);
+            // }
 
             let pa = triangle[0] - proj;
             let pb = triangle[1] - proj;
@@ -401,23 +424,33 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
             // let res = triangle[0].to_vec()*bary.0+triangle[1].to_vec()*bary.1+triangle[2].to_vec()*bary.2;
             // println!("{} {} {} == {} {} {}", res.x, res.y, res.z, proj.x, proj.y, proj.z);
 
-            let oa = triangle[0] - Point3::origin();
-            let ob = triangle[1] - Point3::origin();
-            let oc = triangle[2] - Point3::origin();
+            // let oa = triangle[0] - Point3::origin();
+            // let ob = triangle[1] - Point3::origin();
+            // let oc = triangle[2] - Point3::origin();
 
-            let aa = a.support(oa);
-            let ab = a.support(ob);
-            let ac = a.support(oc);
+            let aa = a.support(polytope.dirs()[face[0]]);
+            let ab = a.support(polytope.dirs()[face[1]]);
+            let ac = a.support(polytope.dirs()[face[2]]);
 
-            let ba = b.support(-oa);
-            let bb = b.support(-ob);
-            let bc = b.support(-oc);
+            let ba = b.support(-polytope.dirs()[face[0]]);
+            let bb = b.support(-polytope.dirs()[face[1]]);
+            let bc = b.support(-polytope.dirs()[face[2]]);
+
+            // println!("-----");
+            // let t = aa - ba;
+            // println!("{} {} {} / {} {} {}", t.x, t.y, t.z, oa.x, oa.y, oa.z);
+            // let t = ab - bb;
+            // println!("{} {} {} / {} {} {}", t.x, t.y, t.z, ob.x, ob.y, ob.z);
+            // println!("{:?} {:?} {:?}", ab, bb, ob);
+            // let t = ac - bc;
+            // println!("{} {} {} / {} {} {}", t.x, t.y, t.z, oc.x, oc.y, oc.z);
 
             let pa = aa * bary.0 + ab.to_vec() * bary.1 + ac.to_vec() * bary.2;
             let pb = ba * bary.0 + bb.to_vec() * bary.1 + bc.to_vec() * bary.2;
 
-            // assert!(((pa-pb).magnitude() - mindist_global).abs() < f32::EPSILON);
-            return (n.normalize(), mindist, a.to_local(pa), b.to_local(pb));
+            // return (n.normalize(), mindist, a.to_local(pa), b.to_local(pb));
+            let normal = n.normalize();
+            return (normal, mindist, a.to_local(pa), b.to_local(pb));
         } else {
             mindist_global = mindist;
             closest_global = closest_triangle;

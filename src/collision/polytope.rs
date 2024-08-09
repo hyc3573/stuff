@@ -51,14 +51,16 @@ fn should_swap_winding(a: Point3<f32>, b: Point3<f32>, c: Point3<f32>, align: Ve
 
 pub struct Polytope {
     vertices: Vec<Point3<f32>>,
+    dirs: Vec<Vec3>,
     faces: Vec<[usize; 3]>,
 }
 
 impl Polytope {
     pub fn from_simplex(a: Simplex) -> Option<Self> {
-        if let Simplex::Tetrahedron(A, B, C, D) = a {
+        if let Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dd) = a {
             let mut new = Self {
                 vertices: vec![A, B, C, D],
+                dirs: vec![ad, bd, cd, dd],
                 faces: vec![[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
             };
 
@@ -89,6 +91,7 @@ impl Polytope {
 
     pub fn expand(&mut self, p: Point3<f32>, dir: Vec3) {
         self.vertices.push(p);
+        self.dirs.push(dir);
         let mut faces_after: Vec<[usize; 3]> = Vec::new();
         let mut new_edges: HashSet<UnorderedPair<usize>> = HashSet::new();
         for face in &self.faces {
@@ -144,6 +147,10 @@ impl Polytope {
 
     pub fn vertices(&self) -> &Vec<Point3<f32>> {
         &self.vertices
+    }
+
+    pub fn dirs(&self) -> &Vec<Vec3> {
+        &self.dirs
     }
 }
 

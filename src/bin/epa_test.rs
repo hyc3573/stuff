@@ -10,7 +10,7 @@ use std::ops::Deref;
 use std::rc::Rc;
 use std::cell::RefCell;
 
-const VEL: f32 = 0.1;
+const VEL: f32 = 0.01;
 
 fn main() {
     let window = Window::new(WindowSettings {
@@ -116,13 +116,16 @@ fn main() {
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
     let c1b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(0.0, 0.0, 0.0),
-        Quat::one(),
+        vec3(1.2486387, -0.065917, 0.12459592),
+        Quat::from_sv(
+            0.43294528,
+            vec3(0.60419583, 0.17948799, -0.6444299)
+        ),
         1.0,
         cubeinertia_mass(1.0)
     )));
     let c2b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(0.75, 0.75, 0.75),
+        vec3(0., -0.0, 0.),
         Quat::one(),
         1.0,
         cubeinertia_mass(1.0)
@@ -179,6 +182,10 @@ fn main() {
             c2b.as_ref().borrow().pos()
         ) * Mat4::from_scale(0.5) * Mat4::from(c2b.as_ref().borrow().apos()));
 
+        let p1 = c1b.as_ref().borrow().pos();
+        let p2 = c2b.as_ref().borrow().pos();
+        // println!("{} {} {} / {} {} {}", p1.x, p1.y, p1.z, p2.x, p2.y, p2.z);
+
         let gjkres = gjk(&c1c, &c2c, true);
         let mut draw_points = false;
         if let Some(simplex) = gjkres {
@@ -192,12 +199,12 @@ fn main() {
             point1.set_transformation(
                 Mat4::from_translation(
                     pa
-                )*Mat4::from_scale(0.2)
+                )*Mat4::from_scale(0.01)
             );
             point2.set_transformation(
                 Mat4::from_translation(
                     pb
-                )*Mat4::from_scale(0.2)
+                )*Mat4::from_scale(0.01)
             )
         }
         

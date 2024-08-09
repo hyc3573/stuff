@@ -182,18 +182,18 @@ fn main() {
     let light0 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, -0.5, -0.5));
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
-    let mut physics = Physics::new(vec3(0.0, -100.0, 0.0), SUBS, ITER);
+    let mut physics = Physics::new(vec3(0.0, -10.0, 0.0), SUBS, ITER);
     let part1 = physics.add_body(
-        Particle::new(vec3(0.0, 0.0, 0.0), 1.0)
+        Particle::new(vec3(0.0, 0.0, 0.0), 1.0/50.0)
     );
     let part2 = physics.add_body(
-        Particle::new(vec3(1.5, 0.0, 0.0), 1.0)
+        Particle::new(vec3(1.5, 0.0, 0.0), 1.0/50.0)
     );
     let rigid1 = physics.add_body(
         RigidBody::new(
             vec3(3.0, 0.0, 0.0),
             Quat::one(),
-            1.0,
+            1.0/100.0,
             // zeroinertia_mass()
             cubeinertia_mass(1.0)
         ),
@@ -202,7 +202,7 @@ fn main() {
         RigidBody::new(
             vec3(0.0, -3.0, 0.0),
             Quat::one(),
-            1.0,
+            1.0/100.0,
             // zeroinertia_mass()
             cubeinertia_mass(1.0)
         )
@@ -265,7 +265,7 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*0.1);
+        physics.update(dt*1.0);
         // println!("{dt}");
 
         let pos = physics.bodies()[1].as_ref().borrow().pos();
