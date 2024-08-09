@@ -8,6 +8,7 @@ use crate::rigidbody_constraint::RDist;
 use crate::rigidbody_constraint::RColl;
 use crate::collision::collider::*;
 use std::borrow::Borrow;
+use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::vec::Vec;
@@ -79,6 +80,7 @@ impl Physics {
         let collision_pairs = potential_collisions;
 
         for _ in 0..self.substeps {
+            self.bodies[3].as_ref().borrow_mut().add_force(-self.gravity);
             for body in &self.bodies {
                 body.as_ref().borrow_mut().add_force(self.gravity);
                 body.as_ref().borrow_mut().predict(dt);
@@ -147,14 +149,13 @@ impl Physics {
                 constraint.velocity_update(dt);
             }
 
+            for body in self.bodies.iter() {
+                body.as_ref().borrow_mut().update_velocity(dt);
+            }
 
             // let pos = self.bodies[3].as_ref().borrow().pos();
             // println!("{} {} {}", pos.x, pos.y, pos.z);
             self.temp_constraint.clear();
-        }
-
-        for body in self.bodies.iter() {
-            body.as_ref().borrow_mut().update_velocity(dt);
         }
     }
 

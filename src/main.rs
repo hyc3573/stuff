@@ -194,7 +194,8 @@ fn main() {
             vec3(3.0, 0.0, 0.0),
             Quat::one(),
             1.0,
-            cubeinertia_mass(1.0),
+            // zeroinertia_mass()
+            cubeinertia_mass(1.0)
         ),
     );
     let rigid2 = physics.add_body(
@@ -202,6 +203,7 @@ fn main() {
             vec3(0.0, -3.0, 0.0),
             Quat::one(),
             1.0,
+            // zeroinertia_mass()
             cubeinertia_mass(1.0)
         )
     );
@@ -239,7 +241,7 @@ fn main() {
         ParticleFix::new(
             [rigid2.clone()],
             rigid2.as_ref().borrow().pos(),
-            0.0000
+            0.0000000
         )
     );
 
@@ -263,7 +265,7 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*1.0);
+        physics.update(dt*0.1);
         // println!("{dt}");
 
         let pos = physics.bodies()[1].as_ref().borrow().pos();

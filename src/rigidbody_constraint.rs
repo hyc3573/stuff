@@ -56,7 +56,7 @@ impl Constraint for RDist {
         let pos = self.points();
         let mut n = pos[0] - pos[1];
 
-        if !n.is_zero() {
+        if n.magnitude2() > f32::EPSILON*f32::EPSILON {
             n = n.normalize()
         }
 
@@ -139,7 +139,9 @@ impl Constraint for RColl {
         }
 
         // result[1] *= -1.0;
-        result[0] *= -1.0;
+        // result[0] *= -1.0;
+        // result[0] = result[0].invert();
+        // result[1] = result[1].invert();
 
         result
         // vec![Quat::zero(), Quat::zero()]
@@ -168,7 +170,7 @@ impl Constraint for RColl {
 
         if v_normal.abs() > 2.0*10.0*dt {
             let v_normal_original = self.normal.dot(self.original_velocity);
-            let e = 0.9;
+            let e = 0.1;
             // println!("{}", v_normal_original);
             dv += self.normal*(-v_normal + f32::max(-e*v_normal_original, 0.0));
         }

@@ -73,7 +73,7 @@ macro_rules! rigidbody_common {
         fn update(&mut self, dt: f32) {
             self.acc = Vec3::zero();
             // self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
-            self.vel = (self.pos - self.pos_prev)/dt;
+            self.vel = (self.pos_new - self.pos_prev)/dt;
 
             self.aacc = Vec3::zero();
             let dq = self.apos*self.apos_prev.invert();
@@ -106,8 +106,8 @@ macro_rules! rigidbody_common {
         }
 
         fn update_velocity(&mut self, dt: f32) {
-            self.vel *= DAMP;
-            self.avel *= DAMP;
+            self.vel *= DAMP.powf(dt);
+            self.avel *= DAMP.powf(dt);
         }
     }
 }
@@ -127,7 +127,7 @@ pub trait Body {
     fn predict(&mut self, dt: f32);
     fn update(&mut self, dt: f32);
     fn update_velocity(&mut self, dt: f32) {
-        self.set_vel(self.vel()*DAMP);
+        self.set_vel(self.vel()*DAMP.powf(dt));
     }
     fn iterate(&mut self);
 

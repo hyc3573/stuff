@@ -210,29 +210,53 @@ pub fn gjk(
                 }
                 let ACDn = ACDn;
 
-                if ABDn.dot(DO) > 0.0 {
+                let overABD = ABDn.dot(DO) > 0.0;
+                let overBCD = BCDn.dot(DO) > 0.0;
+                let overACD = ACDn.dot(DO) > 0.0;
+
+                if overABD && !overBCD && !overACD {
                     let E = support(&a, &b, ABDn);
                     if ABDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
-                    println!("ABD");
                     simplex = Simplex::Tetrahedron(A, B, D, E);
-                } else if BCDn.dot(DO) > 0.0 {
+                } else if !overABD && overBCD && !overACD {
                     let E = support(&a, &b, BCDn);
                     if BCDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
-                    println!("BCD");
                     simplex = Simplex::Tetrahedron(B, C, D, E);
-                } else if ACDn.dot(DO) > 0.0 {
+                } else if !overABD && !overBCD && overACD {
                     let E = support(&a, &b, ACDn);
                     if ACDn.dot(E - Point3::origin()) < 0.0 {
                         return None;
                     }
-                    println!("ACD");
                     simplex = Simplex::Tetrahedron(A, C, D, E);
-                } else {
+                } else if !overABD && !overBCD && !overACD {
                     return Some(simplex);
+                } else if overABD && overBCD && overACD {
+                    return None;
+                } else if overABD && overBCD && !overACD {
+                    let DBn = -DB.cross(DO).cross(DB);
+                    let E = support(&a, &b, DBn);
+                    if DBn.dot(E - Point3::origin()) < 0.0 {
+                        return None;
+                    }
+                    simplex = Simplex::Tetrahedron(B, C, D, E);
+                } else if !overABD && overBCD && overACD {
+                    let DCn = -DC.cross(DO).cross(DC);
+                    let E = support(&a, &b, DCn);
+                    if DCn.dot(E - Point3::origin()) < 0.0 {
+                        return None;
+                    }
+                    simplex = Simplex::Tetrahedron(A, C, D, E);
+                } else if overABD && !overBCD && overACD {
+                    let DAn = -DA.cross(DO).cross(DA);
+                    let E = support(&a, &b, DAn);
+                    if DAn.dot(E - Point3::origin()) < 0.0 {
+                        return None;
+                    }
+                    simplex = Simplex::Tetrahedron(A, B, D, E);
                 }
             }
         }

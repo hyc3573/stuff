@@ -82,7 +82,7 @@ pub trait Constraint {
         self.update_lambda(dlambda);
 
         for i in 0..self.len() {
-            self.bodies()[i].as_ref().borrow_mut().update_pos(dx[i]/2.0);
+            self.bodies()[i].as_ref().borrow_mut().update_pos(dx[i]/1.0);
             self.bodies()[i].as_ref().borrow_mut().add_apos(dq[i]);
         }
     }
