@@ -2,7 +2,7 @@
 name = "stuff"
 version = "0.1.0"
 edition = "2021"
-default-run = "stuff"
+default-run = "stack"
 
 [lib]
 name = "stuff_lib"

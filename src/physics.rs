@@ -16,6 +16,8 @@ use crate::particle_constraint::*;
 use crate::collision::gjk::*;
 use three_d::*;
 use itertools::Itertools;
+use crate::timestep_schedule::*;
+use std::collections::VecDeque;
 
 type BodyRc = Rc<RefCell<dyn Body>>;
 
@@ -28,7 +30,9 @@ pub struct Physics {
     gravity: Vec3,
 
     substeps: usize,
-    iterations: usize
+    iterations: usize,
+
+    scheduler: Box<dyn TimestepScheduler>
 }
 
 impl Physics {
@@ -42,7 +46,9 @@ impl Physics {
             gravity,
             
             substeps,
-            iterations
+            iterations,
+
+            scheduler: Box::new(UniformSchedule::new(substeps)),
         }
     }
 
@@ -66,20 +72,19 @@ impl Physics {
     }
 
     pub fn update(&mut self, dt: f32) {
-        let dt = dt/(self.substeps as f32);
-
-        let mut potential_collisions = Vec::<(usize, usize)>::new();
+        let mut potential_collisions = Vec::<(usize, usize, RefCell<Vec<(Vec3, Vec3)>>)>::new();
         for pair in self.colliders.iter().enumerate().combinations(2) {
             let (i, a) = pair[0];
             let (j, b) = pair[1];
 
             if true {
-                potential_collisions.push((i, j));
+                potential_collisions.push((i, j, RefCell::new(Vec::new())));
             }
         }
         let collision_pairs = potential_collisions;
-
-        for _ in 0..self.substeps {
+        
+        for substep in 0..self.substeps {
+            let dt = self.scheduler.get(substep, dt);
             // self.bodies[3].as_ref().borrow_mut().add_force(-self.gravity);
             for body in &self.bodies {
                 let invmass = body.as_ref().borrow().invmass();
@@ -89,37 +94,58 @@ impl Physics {
                 body.as_ref().borrow_mut().predict(dt);
             }
 
-            for (i, j, ..) in collision_pairs.iter() {
+            for (pair_index, (i, j, points)) in collision_pairs.iter().enumerate() {
                 let a = &self.colliders[*i]; let b = &self.colliders[*j];
 
                 let result = gjk(a, b, true);
                 if let Some(simpl) = result {
                     let (normal, depth, va, vb) = epa(a, b, simpl);
+                    // println!("{:?}", normal);
+                    // let depth = depth.abs();
 
-                    if normal.magnitude2().is_nan() || depth <= 0.0 {
+                    if normal.magnitude2().is_nan() || depth < 0.0 {
                         continue;
                     }
 
+                    if points.borrow().len() < 4 || true {
+                        points.borrow_mut().push((va, vb));
+                    }
+
+                    // if collision_normals[pair_index].is_none() {
+                    //     collision_normals[pair_index] = Some(normal);
+                    // }
+                    // let normal = collision_normals[pair_index].unwrap();
+
+                    // let posa = a.get_body().as_ref().borrow().pos();
+                    // let posb = b.get_body().as_ref().borrow().pos();
+                    // let dx = posa - posb;
+                    // let dist = dx.magnitude();
+                    // let normal = dx/dist;
+                    // let depth = f32::max(0.0, (posa - posb).dot(normal));
+
                     // println!("------");
-                    // println!("{depth}");
                     // println!("{:?} {:?}", a.get_body().as_ref().borrow().pos(), a.get_body().as_ref().borrow().apos());
                     // println!("{}", (a.get_body().as_ref().borrow().pos_at(va) - b.get_body().as_ref().borrow().pos_at(vb)).magnitude());
 
-                    self.temp_constraint.push(
-                        Box::new(
-                            RColl::new(
-                                [a.get_body(), b.get_body()],
-                                // [a.get_body().as_ref().borrow().apos().rotate_vector(vb), b.get_body().as_ref().borrow().apos().rotate_vector(va)],
-                                // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
-                                [va, vb],
-                                normal,
-                                depth,
-                                // actual_normal,
-                                // actual_depth,
-                                0.000
+                    for (va, vb) in points.borrow()[isize::max(0, points.borrow().len() as isize - 4) as usize..].iter() {
+                        self.temp_constraint.push(
+                            Box::new(
+                                RColl::new(
+                                    [a.get_body(), b.get_body()],
+                                    [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
+                                    // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
+                                    // [*va, *vb],
+                                    // [Vec3::zero(), Vec3::zero()],
+                                    // collision_normals[pair_index].unwrap(),
+                                    normal,
+                                    depth/1.0,
+                                    // actual_normal,
+                                    // actual_depth,
+                                    0.000
+                                )
                             )
-                        )
-                    )
+                        )    
+                    }
                 }
             }
 

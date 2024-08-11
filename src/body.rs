@@ -158,4 +158,8 @@ pub trait Body {
         self.add_force(f);
     }
     fn add_torque(&mut self, t: Vec3) {}
+
+    fn get_matrix(&self) -> Mat4 {
+        Mat4::from_translation(self.pos())*Mat4::from(self.apos())
+    }
 }

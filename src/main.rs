@@ -11,6 +11,7 @@ mod particle_constraint;
 mod inertiatensor;
 mod physics;
 mod collision;
+mod timestep_schedule;
 
 use crate::body::Body;
 use crate::config::*;
@@ -24,13 +25,13 @@ use constraint::Constraint;
 use physics::*;
 use cube::*;
 use body::*;
-use inertiatensor::*;
 use rigidbody_constraint::RDist;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
 use std::rc::Rc;
 use std::vec::Vec;
 use std::time::Instant;
+use crate::inertiatensor::*;
 use three_d::*;
 
 fn main() {
@@ -219,7 +220,7 @@ fn main() {
     physics.add_constraint(
         ParticleFix::new(
             [part1.clone()],
-            vec3(0.0, 0.0, 0.0), 0.0
+            vec3(0.0, 0.0, 0.0), 0.0000
         )
     );
     // physics.add_constraint(
@@ -241,7 +242,7 @@ fn main() {
         ParticleFix::new(
             [rigid2.clone()],
             rigid2.as_ref().borrow().pos(),
-            0.0000000
+            0.00000000
         )
     );
 

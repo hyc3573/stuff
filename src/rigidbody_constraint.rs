@@ -137,7 +137,7 @@ impl Constraint for RColl {
     }
 
     fn dC(&self) -> Vec<Vec3> {
-        vec!(-self.normal, self.normal)
+        vec!(self.normal, -self.normal)
     }
 
     fn dq(&self, dlambda: f32) -> Vec<Quat> {
@@ -150,13 +150,13 @@ impl Constraint for RColl {
         // println!("----\n{:?}\n{:?}", result[0], result[1]);
 
         // result[1] *= -1.0;
-        // result[0] *= -1.0;
+        result[0] *= -1.0;
         // result[0] = result[0].invert();
         // result[1] = result[1].invert();
         // println!("{} {} {} {} / {} {} {} {}", result[0].v.x, result[0].v.y, result[0].v.z, result[0].s, result[1].v.x, result[1].v.y, result[1].v.z, result[1].s);
 
-        result
-        // vec![Quat::zero(), Quat::zero()]
+        // result
+        vec![Quat::zero(), Quat::zero()]
     } 
 
     fn invmass_sum(&self) -> f32 {
@@ -188,14 +188,14 @@ impl Constraint for RColl {
         if v_normal.abs() > 0.0 {
             let v_normal_original = normal.dot(self.original_velocity);
             // println!("{}", v_normal_original);
-            let e = 0.1;
+            let e = 0.0;
             dv += normal*(-v_normal + f32::min(-e*v_normal_original, 0.0));
         } else {
             dv += -normal*v_normal;
         }
 
         let v_tangential_abs = v_tangential.magnitude();
-        let u = 0.0;
+        let u = 0.9;
         if v_tangential_abs > f32::EPSILON {
             dv -= v_tangential/v_tangential_abs*f32::min(
                 u*self.lambda.abs()/dt, v_tangential_abs

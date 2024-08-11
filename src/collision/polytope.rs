@@ -4,6 +4,7 @@ use std::collections::HashSet;
 use std::vec::Vec;
 use three_d::*;
 use std::fmt;
+use std::mem::swap;
 
 mod unordered_pair {
     #[derive(PartialEq, Eq, Hash, Clone, Copy)]
@@ -38,7 +39,7 @@ use self::unordered_pair::UnorderedPair;
 
 fn get_ccw_normal(a: Point3<f32>, b: Point3<f32>, c: Point3<f32>) -> Vec3 {
     // Get outward facing normal for ccw triangle
-    return (c - a).cross(b - a);
+    return (a - b).cross(c - a);
 }
 
 fn should_swap_winding(a: Point3<f32>, b: Point3<f32>, c: Point3<f32>, align: Vec3) -> bool {
@@ -58,32 +59,29 @@ pub struct Polytope {
 impl Polytope {
     pub fn from_simplex(a: Simplex) -> Option<Self> {
         if let Simplex::Tetrahedron(A, B, C, D, ad, bd, cd, dd) = a {
-            let mut new = Self {
+            let mut result = Self {
                 vertices: vec![A, B, C, D],
                 dirs: vec![ad, bd, cd, dd],
-                faces: vec![[0, 1, 2], [0, 1, 3], [0, 2, 3], [1, 2, 3]],
+                faces: vec![[0, 1, 2], [1, 0, 3], [0, 2, 3], [2, 1, 3]],
             };
 
             let center =
                 Point3::origin() + (A.to_vec() + B.to_vec() + C.to_vec() + D.to_vec()) / 4.0;
 
             // fix winding order to CCW
-            let mut new_indices: Vec<[usize; 3]> = vec![];
-            for [a, b, c] in new.faces.into_iter() {
-                if should_swap_winding(
-                    new.vertices[a],
-                    new.vertices[b],
-                    new.vertices[c],
-                    new.vertices[a] - center,
-                ) {
-                    new_indices.push([b, a, c]);
-                } else {
-                    new_indices.push([a, b, c]);
-                }
+            let mut faces: Vec<[usize; 3]> = vec![];
+            for [a, b, c] in result.faces.into_iter() {
+                faces.push([a, b, c]);
             }
-            new.faces = new_indices;
+            result.faces = faces;
 
-            Some(new)
+            let h = (A - B).dot((A - C).cross(A - D));
+            if h < 0.0 {
+                result.vertices.swap(0, 1);
+                result.dirs.swap(0, 1);
+            }
+
+            Some(result)
         } else {
             None
         }
@@ -93,7 +91,7 @@ impl Polytope {
         self.vertices.push(p);
         self.dirs.push(dir);
         let mut faces_after: Vec<[usize; 3]> = Vec::new();
-        let mut new_edges: HashSet<UnorderedPair<usize>> = HashSet::new();
+        let mut new_edges: Vec<(usize, usize)> = Vec::new();
         for face in &self.faces {
             let normal = get_ccw_normal(
                 self.vertices[face[0]],
@@ -103,32 +101,37 @@ impl Polytope {
 
             if normal.dot(p - self.vertices[face[0]]) > 0.0 {
                 // same direction
-                let ab: UnorderedPair<usize> = (face[0], face[1]).into();
-                let bc: UnorderedPair<usize> = (face[1], face[2]).into();
-                let ac: UnorderedPair<usize> = (face[0], face[2]).into();
+                let ab: (usize, usize) = (face[0], face[1]);
+                let ba: (usize, usize) = (face[1], face[0]);
+                
+                let bc: (usize, usize) = (face[1], face[2]);
+                let cb: (usize, usize) = (face[2], face[1]);
+                
+                let ca: (usize, usize) = (face[2], face[0]);
+                let ac: (usize, usize) = (face[0], face[2]);
 
-                if !new_edges.contains(&ab) {
-                    new_edges.remove(&ab);
+                if let Some(index) = new_edges.iter().position(|n| n == &ba) {
+                    new_edges.remove(index);
                 } else {
-                    new_edges.insert(ab);
+                    new_edges.push(ab);
                 }
-                if !new_edges.contains(&bc) {
-                    new_edges.remove(&bc);
+                if let Some(index) = new_edges.iter().position(|n| n == &cb) {
+                    new_edges.remove(index);
                 } else {
-                    new_edges.insert(ab);
+                    new_edges.push(bc);
                 }
-                if !new_edges.contains(&ac) {
-                    new_edges.remove(&ac);
+                if let Some(index) = new_edges.iter().position(|n| n == &ac) {
+                    new_edges.remove(index);
                 } else {
-                    new_edges.insert(ac);
+                    new_edges.push(ca);
                 }
             } else {
                 faces_after.push(face.clone());
             }
         }
         for edge in new_edges.iter() {
-            let a = edge.a();
-            let b = edge.b();
+            let a = edge.0;
+            let b = edge.1;
             let c = self.vertices.len() - 1;
 
             if should_swap_winding(self.vertices[a], self.vertices[b], self.vertices[c], dir) {
@@ -139,6 +142,8 @@ impl Polytope {
         }
 
         self.faces = faces_after;
+
+        println!("{self}");
     }
 
     pub fn faces(&self) -> &Vec<[usize; 3]> {

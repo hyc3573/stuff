@@ -329,6 +329,8 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
                 break;
             }
         }
+
+        simplex = s;
     }
     if let Simplex::Triangle(A, B, C, ad, bd, cd) = simplex {
         let dir = (A - B).cross(B - C);
@@ -346,7 +348,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
 
     // println!("---------------");
     
-    let mut polytope = Polytope::from_simplex(s).unwrap();
+    let mut polytope = Polytope::from_simplex(simplex).unwrap();
     // println!("{}", polytope);
 
     let mut mindist_global = f32::MAX;
@@ -395,7 +397,11 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
                 &polytope.vertices()[face[2]],
             ];
 
-            let n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
+            let mut n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
+            if n.dot(triangle[0] - Point3::origin()) < 0.0 {
+                n = -n;
+            }
+            let n = n;
 
             let proj = triangle_point_proj(triangle, &Point3::origin());
             // println!("-----");
@@ -467,7 +473,6 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
         let n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
 
         polytope.expand(support(&a, &b, n), n);
-        // println!("{}", polytope);
     }
 }
 
