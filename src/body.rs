@@ -8,7 +8,7 @@ use crate::collision::collider::Collider;
 macro_rules! body_common {
     {} => {
         fn invmass(&self) -> f32 {self.invmass}
-        fn pos(&self) -> Vec3 {self.pos_new}
+        fn pos(&self) -> Vec3 {self.pos}
         fn pos_prev(&self) -> Vec3 {self.pos_prev}
         fn vel(&self) -> Vec3 {self.vel}
         fn set_vel(&mut self, new_vel: Vec3) {
@@ -17,7 +17,7 @@ macro_rules! body_common {
         fn acc(&self) -> Vec3 {self.acc}
 
         fn update_pos(&mut self, dx: Vec3) {
-            self.pos_new += dx;
+            self.pos += dx;
         }
         fn add_force(&mut self, f: Vec3) {
             self.acc += self.invmass*f;
@@ -36,7 +36,7 @@ macro_rules! rigidbody_common {
         }
 
         fn apos(&self) -> Quat {
-            self.apos_new
+            self.apos
         }
 
         fn apos_prev(&self) -> Quat {
@@ -65,8 +65,8 @@ macro_rules! rigidbody_common {
             self.apos = self.apos + (dt*0.5*Quat::new(0.0, self.avel.x, self.avel.y, self.avel.z))*self.apos;
             self.apos = self.apos.normalize();
 
-            self.pos_new = self.pos;
-            self.apos_new = self.apos;
+            // self.pos_new = self.pos;
+            // self.apos_new = self.apos;
         }
 
         fn update(&mut self, dt: f32) {
@@ -83,8 +83,8 @@ macro_rules! rigidbody_common {
             }
         }
         fn iterate(&mut self) {
-            self.pos = self.pos_new;
-            self.apos = self.apos_new;
+            // self.pos = self.pos_new;
+            // self.apos = self.apos_new;
         }
 
         fn update_apos(&mut self, dq: Quat) {
@@ -92,8 +92,8 @@ macro_rules! rigidbody_common {
         }
 
         fn add_apos(&mut self, dq: Quat) {
-            self.apos_new += dq;
-            self.apos_new = self.apos.normalize();
+            self.apos += dq;
+            self.apos = self.apos.normalize();
         }
 
         fn add_force_at(&mut self, f: Vec3, at: Vec3) {
