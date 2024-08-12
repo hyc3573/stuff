@@ -157,8 +157,10 @@ impl RColl {
             .enumerate()
             .map(|(i, c)| {
                 // self.bodies[i].as_ref().borrow().apos().rotate_vector(self.bodies[i].as_ref().borrow().to_local(*c))
-                (self.bodies[0].as_ref().borrow().to_local(*c),
-                 self.bodies[1].as_ref().borrow().to_local(*c))
+                (
+                    self.bodies[0].as_ref().borrow().apos().rotate_vector(self.bodies[0].as_ref().borrow().to_local(*c)),
+                    self.bodies[0].as_ref().borrow().apos().rotate_vector(self.bodies[1].as_ref().borrow().to_local(*c)),
+                )
             })
             .collect::<Vec<(Vec3, Vec3)>>()
     }
@@ -178,6 +180,7 @@ impl Constraint for RColl {
     fn dq(&self, dlambda: f32) -> Vec<Quat> {
         let mut result = vec![Quat::zero(), Quat::zero()];
         for r in self.r() {
+            // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
             result[0] +=
                 (0.5 * Quat::from_sv(
                     0.0,
@@ -191,10 +194,7 @@ impl Constraint for RColl {
                         * r.1.cross(self.dC()[1] * dlambda),
                 )) * self.bodies()[1].as_ref().borrow().apos();
         }
-        // println!("----\n{:?}\n{:?}", result[0], result[1]);
 
-        // result[1] *= -1.0;
-        // result[0] *= -1.0;
         // result[0] = result[0].invert();
         // result[1] = result[1].invert();
         // println!("{} {} {} {} / {} {} {} {}", result[0].v.x, result[0].v.y, result[0].v.z, result[0].s, result[1].v.x, result[1].v.y, result[1].v.z, result[1].s);
@@ -251,7 +251,7 @@ impl Constraint for RColl {
             }
 
             let v_tangential_abs = v_tangential.magnitude();
-            let u = 0.9;
+            let u = 0.0;
             if v_tangential_abs > f32::EPSILON {
                 dv -= v_tangential / v_tangential_abs
                     * f32::min(u * self.lambda.abs() / dt, v_tangential_abs);

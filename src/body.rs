@@ -66,13 +66,10 @@ macro_rules! rigidbody_common {
             self.apos = self.apos.normalize();
 
             self.pos_new = self.pos;
-            self.apos = self.apos_new;
+            self.apos_new = self.apos;
         }
 
         fn update(&mut self, dt: f32) {
-            self.pos = self.pos_new;
-            self.apos = self.apos_new;
-            
             self.acc = Vec3::zero();
             // self.vel = (2.0*self.pos - self.pos_prev - self.pos_pred)/dt;
             self.vel = (self.pos - self.pos_prev)/dt;
@@ -86,8 +83,8 @@ macro_rules! rigidbody_common {
             }
         }
         fn iterate(&mut self) {
-            // self.pos = self.pos_new;
-            // self.apos = self.apos_new;
+            self.pos = self.pos_new;
+            self.apos = self.apos_new;
         }
 
         fn update_apos(&mut self, dq: Quat) {

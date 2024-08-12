@@ -29,7 +29,7 @@ impl Body for Particle {
         self.vel = (self.pos - self.pos_prev)/dt;
     }
     fn iterate(&mut self) {
-        // self.pos = self.pos_new;
+        self.pos = self.pos_new;
     }
 }
 

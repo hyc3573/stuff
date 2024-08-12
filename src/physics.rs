@@ -261,6 +261,7 @@ impl Physics {
             for _ in 0..self.iterations {
                 for constraint in &mut self.temp_constraint {
                     constraint.iterate(dt / (self.iterations as f32));
+                    // println!("{:?}", self.bodies[2].as_ref().borrow().apos());
                 }
                 for constraint in &mut self.constraint {
                     constraint.iterate(dt / (self.iterations as f32));
@@ -287,6 +288,7 @@ impl Physics {
             for constraint in &mut self.constraint {
                 constraint.velocity_update(dt);
             }
+
 
             // let pos = self.bodies[3].as_ref().borrow().pos();
             // println!("{} {} {}", pos.x, pos.y, pos.z);

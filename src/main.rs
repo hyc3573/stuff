@@ -196,7 +196,8 @@ fn main() {
             Quat::one(),
             1.0/100.0,
             // zeroinertia_mass()
-            cubeinertia_mass(1.0)
+            cubeinertia_mass(0.01)
+            // sphereinertia_mass(0.01)
         ),
     );
     let rigid2 = physics.add_body(
@@ -204,8 +205,8 @@ fn main() {
             vec3(0.0, -3.0, 0.0),
             Quat::one(),
             1.0/100.0,
-            // zeroinertia_mass()
-            cubeinertia_mass(1.0)
+            zeroinertia_mass()
+            // cubeinertia_mass(1.0)
         )
     );
     physics.add_constraint(
@@ -279,9 +280,7 @@ fn main() {
             // vec3(0.3, 0.4, 0.0)
         ) * Mat4::from_scale(0.2));
         // println!("{} {} {} / {} {} {} / {} {} {}", mat.x.x, mat.x.y, mat.x.z, mat.y.x, mat.y.y, mat.y.z, mat.z.x, mat.z.y, mat.z.z);
-        cube1.set_transformation(Mat4::from_translation(
-            rigid1.as_ref().borrow().pos()
-        ) * Mat4::from_scale(0.5) * Mat4::from(rigid1.as_ref().borrow().apos()));
+        cube1.set_transformation(rigid1.as_ref().borrow().get_matrix()*Mat4::from_scale(0.5));
         cube2.set_transformation(Mat4::from_translation(
             rigid2.as_ref().borrow().pos()
         ) * Mat4::from_scale(0.5) * Mat4::from(rigid2.as_ref().borrow().apos()));
