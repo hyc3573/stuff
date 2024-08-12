@@ -18,7 +18,7 @@ use crate::config::*;
 use crate::particle::*;
 use crate::particle_constraint::*;
 use crate::particle_constraint::*;
-use collision::chull::cube_chull;
+use collision::chull::cube_polyhedra;
 use collision::collider::*;
 use collision::gjk::*;
 use constraint::Constraint;
@@ -230,7 +230,7 @@ fn main() {
     //     )
     // );
     let attach = vec3(-0.5, -0.5, -0.5);
-    let dist = (rigid1.as_ref().borrow().pos_at(attach) - part2.as_ref().borrow().pos()).magnitude();
+    let dist = (rigid1.as_ref().borrow().to_global(attach) - part2.as_ref().borrow().pos()).magnitude();
     physics.add_constraint(
         RDist::new(
             [part2.clone(), rigid1.clone()],
@@ -246,12 +246,12 @@ fn main() {
         )
     );
 
-    let c1 = CHullCollider::new(
-        &(rigid1.clone() as Rc<RefCell<dyn Body>>), cube_chull(1.0)
+    let c1 = PolyhedraCollider::new(
+        &(rigid1.clone() as Rc<RefCell<dyn Body>>), cube_polyhedra(1.0)
     );
     physics.add_collider(c1);
-    let c2 = CHullCollider::new(
-        &(rigid2.clone() as Rc<RefCell<dyn Body>>), cube_chull(1.0)
+    let c2 = PolyhedraCollider::new(
+        &(rigid2.clone() as Rc<RefCell<dyn Body>>), cube_polyhedra(1.0)
     );
     physics.add_collider(c2);
 
@@ -288,7 +288,7 @@ fn main() {
 
         let pos1 = Point3::origin() + part1.as_ref().borrow().pos();
         let pos2 = Point3::origin() + part2.as_ref().borrow().pos();
-        let pos3 = Point3::origin() + rigid1.as_ref().borrow().pos_at(attach);
+        let pos3 = Point3::origin() + rigid1.as_ref().borrow().to_global(attach);
 
         let v1 = pos2 - pos1;
         let v2 = pos3 - pos2;

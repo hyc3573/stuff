@@ -1,5 +1,5 @@
 extern crate stuff_lib;
-use stuff_lib::collision::chull::cube_chull;
+use stuff_lib::collision::chull::cube_polyhedra;
 use three_d::*;
 use stuff_lib::collision::gjk::*;
 use stuff_lib::collision::collider::*;
@@ -116,28 +116,31 @@ fn main() {
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
     let c1b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(1.2486387, -0.065917, 0.12459592),
+        vec3(0.46491915, -0.783919, 0.003859211),
         Quat::from_sv(
-            0.43294528,
-            vec3(0.60419583, 0.17948799, -0.6444299)
+            1.0,
+            vec3(0.0, 0.0, 0.0)
         ),
         1.0,
         cubeinertia_mass(1.0)
     )));
     let c2b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(0., -0.0, 0.),
-        Quat::one(),
+        vec3(-0.46162653, -1.453009, 0.023907943),
+        Quat::from_sv(
+            1.0,
+            vec3(0.0, 0.0, 0.0)
+        ),
         1.0,
         cubeinertia_mass(1.0)
     )));
 
-    let c1c: Box<dyn Collider> = Box::new(CHullCollider::new(
+    let c1c: Box<dyn Collider> = Box::new(PolyhedraCollider::new(
         &c1b,
-        cube_chull(1.0)
+        cube_polyhedra(1.0)
     ));
-    let c2c: Box<dyn Collider> = Box::new(CHullCollider::new(
+    let c2c: Box<dyn Collider> = Box::new(PolyhedraCollider::new(
         &c2b,
-        cube_chull(1.0)
+        cube_polyhedra(1.0)
     ));
 
     window.render_loop(move |mut frame_input| {
@@ -193,8 +196,9 @@ fn main() {
             
             let (normal, depth, va, vb) = epa(&c1c, &c2c, simplex);
 
-            let pa = c1b.as_ref().borrow().pos_at(va);
-            let pb = c2b.as_ref().borrow().pos_at(vb);
+            println!("{:?} {:?}", va, vb);
+            let pa = c1b.as_ref().borrow().to_global(va);
+            let pb = c2b.as_ref().borrow().to_global(vb);
 
             point1.set_transformation(
                 Mat4::from_translation(

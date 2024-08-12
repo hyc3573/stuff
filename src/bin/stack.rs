@@ -5,7 +5,7 @@ use stuff_lib::body::Body;
 use stuff_lib::config::*;
 use stuff_lib::particle::*;
 use stuff_lib::particle_constraint::*;
-use stuff_lib::collision::chull::cube_chull;
+use stuff_lib::collision::chull::cube_polyhedra;
 use stuff_lib::collision::collider::*;
 use stuff_lib::constraint::Constraint;
 use stuff_lib::body::*;
@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::time::Instant;
 use stuff_lib::inertiatensor::*;
 
-const CUBES: usize = 3;
+const CUBES: usize = 5;
 
 fn main() {
     let window = Window::new(WindowSettings {
@@ -76,20 +76,20 @@ fn main() {
         )
     }
 
-    let mut physics = Physics::new(vec3(0.0, -10.0, 0.0), SUBS, ITER);
+    let mut physics = Physics::new(vec3(0.0, -5.0, 0.0), SUBS, ITER);
 
     let base_body = physics.add_body(
         RigidBody::new(
-            vec3(0.0, -10.0, 0.0),
+            vec3(0.0, -5.0, 0.0),
             Quat::one(),
             0.0/100.0,
             zeroinertia_mass()
         )
     );
     physics.add_collider(
-        CHullCollider::new(
+        PolyhedraCollider::new(
             &(base_body.clone() as Rc<RefCell<dyn Body>>),
-            cube_chull(1.0)
+            cube_polyhedra(9.0)
         )
     );
 
@@ -97,16 +97,16 @@ fn main() {
     for i in 0..CUBES {
         bodies.push(physics.add_body(
             RigidBody::new(
-                vec3(0.0, -10.0 + ((i+1) as f32)*3.0, 0.01*i as f32 + 0.01),
+                vec3(0.0, 0.0 + ((i+1) as f32)*2.0, 0.01*i as f32 + 0.00),
                 Quat::one(),
                 1.0/100.0,
                 cubeinertia_mass(1.0)
             )
         ));
         physics.add_collider(
-            CHullCollider::new(
+            PolyhedraCollider::new(
                 &(bodies[bodies.len() - 1].clone() as Rc<RefCell<dyn Body>>),
-                cube_chull(1.0)
+                cube_polyhedra(1.0)
             )
         );
     }
@@ -123,7 +123,7 @@ fn main() {
         physics.update(dt*1.0);
 
         base_cube.set_transformation(
-            base_body.as_ref().borrow().get_matrix()*Mat4::from_scale(0.5)
+            base_body.as_ref().borrow().get_matrix()*Mat4::from_scale(4.5)
         );
 
         for (i, cube) in cubes.iter_mut().enumerate() {

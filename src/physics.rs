@@ -1,23 +1,26 @@
+use crate::body::*;
 use crate::collision;
-use crate::constraint::Constraint;
+use crate::collision::clipping;
+use crate::collision::clipping::*;
+use crate::collision::collider::*;
+use crate::collision::gjk::*;
 use crate::config::*;
+use crate::constraint::Constraint;
 use crate::particle::*;
 use crate::particle_constraint::*;
-use crate::body::*;
-use crate::rigidbody_constraint::RDist;
+use crate::particle_constraint::*;
 use crate::rigidbody_constraint::RColl;
-use crate::collision::collider::*;
+use crate::rigidbody_constraint::RDist;
+use crate::timestep_schedule::*;
+use ::core::f32;
+use itertools::Itertools;
 use std::borrow::Borrow;
 use std::borrow::BorrowMut;
 use std::cell::RefCell;
+use std::collections::VecDeque;
 use std::rc::Rc;
 use std::vec::Vec;
-use crate::particle_constraint::*;
-use crate::collision::gjk::*;
 use three_d::*;
-use itertools::Itertools;
-use crate::timestep_schedule::*;
-use std::collections::VecDeque;
 
 type BodyRc = Rc<RefCell<dyn Body>>;
 
@@ -32,7 +35,7 @@ pub struct Physics {
     substeps: usize,
     iterations: usize,
 
-    scheduler: Box<dyn TimestepScheduler>
+    scheduler: Box<dyn TimestepScheduler>,
 }
 
 impl Physics {
@@ -44,7 +47,7 @@ impl Physics {
             temp_constraint: Vec::new(),
 
             gravity,
-            
+
             substeps,
             iterations,
 
@@ -52,12 +55,10 @@ impl Physics {
         }
     }
 
-    pub fn add_body<T: Body + 'static>(&mut self, body: T) -> Rc<RefCell<T>>{
+    pub fn add_body<T: Body + 'static>(&mut self, body: T) -> Rc<RefCell<T>> {
         let particle = Rc::new(RefCell::new(body));
 
-        self.bodies.push(
-            particle.clone()
-        );
+        self.bodies.push(particle.clone());
 
         particle.clone()
     }
@@ -72,30 +73,31 @@ impl Physics {
     }
 
     pub fn update(&mut self, dt: f32) {
-        let mut potential_collisions = Vec::<(usize, usize, RefCell<Vec<(Vec3, Vec3)>>)>::new();
+        let mut potential_collisions = Vec::<(usize, usize)>::new();
         for pair in self.colliders.iter().enumerate().combinations(2) {
             let (i, a) = pair[0];
             let (j, b) = pair[1];
 
             if true {
-                potential_collisions.push((i, j, RefCell::new(Vec::new())));
+                potential_collisions.push((i, j));
             }
         }
         let collision_pairs = potential_collisions;
-        
+
         for substep in 0..self.substeps {
             let dt = self.scheduler.get(substep, dt);
             // self.bodies[3].as_ref().borrow_mut().add_force(-self.gravity);
             for body in &self.bodies {
                 let invmass = body.as_ref().borrow().invmass();
                 if invmass > 0.0 {
-                    body.as_ref().borrow_mut().add_force(self.gravity/invmass);
+                    body.as_ref().borrow_mut().add_force(self.gravity / invmass);
                 }
                 body.as_ref().borrow_mut().predict(dt);
             }
 
-            for (pair_index, (i, j, points)) in collision_pairs.iter().enumerate() {
-                let a = &self.colliders[*i]; let b = &self.colliders[*j];
+            for (pair_index, (i, j)) in collision_pairs.iter().enumerate() {
+                let a = &self.colliders[*i];
+                let b = &self.colliders[*j];
 
                 let result = gjk(a, b, true);
                 if let Some(simpl) = result {
@@ -107,9 +109,114 @@ impl Physics {
                         continue;
                     }
 
-                    if points.borrow().len() < 4 || true {
-                        points.borrow_mut().push((va, vb));
+                    let a_vert = a.support(normal);
+                    let a_vertices = a.get_vertices().unwrap();
+                    let a_faces = a.get_faces().unwrap();
+                    let a_ind = a_vertices
+                        .iter()
+                        .position(|v| v.distance2(a_vert.to_vec()) < f32::EPSILON * f32::EPSILON)
+                        .unwrap();
+
+                    let b_vert = b.support(-normal);
+                    let b_vertices = b.get_vertices().unwrap();
+                    let b_faces = b.get_faces().unwrap();
+                    let b_ind = b_vertices
+                        .iter()
+                        .position(|v| v.distance2(b_vert.to_vec()) < f32::EPSILON * f32::EPSILON)
+                        .unwrap();
+
+                    let mut max_dot = -f32::INFINITY;
+                    let mut a_ref: &Vec<usize> = &a_faces[0];
+                    for face in a_faces {
+                        if face.contains(&a_ind) {
+                            let dot = ccw_normal(&face, &a_vertices).dot(-normal);
+                            if max_dot < dot {
+                                a_ref = face;
+                                max_dot = dot;
+                            }
+                        }
                     }
+
+                    max_dot = -f32::INFINITY;
+                    let mut b_ref: &Vec<usize> = &b_faces[0];
+                    for face in b_faces {
+                        if face.contains(&b_ind) {
+                            let dot = ccw_normal(&face, &b_vertices).dot(normal);
+                            if max_dot < dot {
+                                b_ref = face;
+                                max_dot = dot;
+                            }
+                        }
+                    }
+
+                    let a_ref = a_ref;
+                    let b_ref = b_ref;
+
+                    let a_face: Vec<Vec3> = a_ref.iter().map(|i| a_vertices[*i]).collect();
+                    let b_face: Vec<Vec3> = b_ref.iter().map(|i| b_vertices[*i]).collect();
+
+                    let a_normal = (a_face[1] - a_face[0]).cross(a_face[2] - a_face[0]);
+                    let b_normal = (b_face[1] - b_face[0]).cross(b_face[2] - b_face[0]);
+
+                    let inc_face;
+                    let ref_face;
+                    let mut adj_face_normals = Vec::new();
+
+                    if a_normal.normalize().dot(normal) < b_normal.normalize().dot(-normal) {
+                        inc_face = b_face;
+                        ref_face = a_face;
+
+                        for (edge_a, edge_b) in
+                            a_ref.iter().chain([a_ref[0]].iter()).tuple_windows()
+                        {
+                            for face in a_faces {
+                                if face == a_ref {
+                                    continue;
+                                }
+                                if face.contains(edge_a) && face.contains(edge_b) {
+                                    adj_face_normals
+                                        .push((a_vertices[*edge_a], ccw_normal(face, &a_vertices)))
+                                }
+                            }
+                        }
+                    } else {
+                        inc_face = a_face;
+                        ref_face = b_face;
+
+                        for (edge_a, edge_b) in
+                            b_ref.iter().chain([b_ref[0]].iter()).tuple_windows()
+                        {
+                            for face in b_faces {
+                                if face == b_ref {
+                                    continue;
+                                }
+                                if face.contains(edge_a) && face.contains(edge_b) {
+                                    adj_face_normals
+                                        .push((b_vertices[*edge_a], ccw_normal(face, &b_vertices)))
+                                }
+                            }
+                        }
+                    }
+                    let adj_face_normals = adj_face_normals;
+
+                    let mut result = inc_face;
+                    // println!("-----");
+                    // println!("{:?}", (ref_face[1] - ref_face[0]).cross(ref_face[2] - ref_face[0]));
+                    // println!("{}", result.len());
+                    for (origin, clip_normal) in adj_face_normals {
+                        // println!("{:?} {:?}", origin, clip_normal);
+                        result = clip(&result, &origin, &(clip_normal), true);
+                        // println!("{}", result.len());
+                    }
+                    result = clip(
+                        &result,
+                        &ref_face[0],
+                        &(-(ref_face[0] - ref_face[1]).cross(ref_face[2] - ref_face[0])),
+                        false,
+                    );
+
+                    // println!("{:?}", result);
+                    // println!("---");
 
                     // if collision_normals[pair_index].is_none() {
                     //     collision_normals[pair_index] = Some(normal);
@@ -127,25 +234,20 @@ impl Physics {
                     // println!("{:?} {:?}", a.get_body().as_ref().borrow().pos(), a.get_body().as_ref().borrow().apos());
                     // println!("{}", (a.get_body().as_ref().borrow().pos_at(va) - b.get_body().as_ref().borrow().pos_at(vb)).magnitude());
 
-                    for (va, vb) in points.borrow()[isize::max(0, points.borrow().len() as isize - 4) as usize..].iter() {
-                        self.temp_constraint.push(
-                            Box::new(
-                                RColl::new(
-                                    [a.get_body(), b.get_body()],
-                                    [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
-                                    // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
-                                    // [*va, *vb],
-                                    // [Vec3::zero(), Vec3::zero()],
-                                    // collision_normals[pair_index].unwrap(),
-                                    normal,
-                                    depth/1.0,
-                                    // actual_normal,
-                                    // actual_depth,
-                                    0.000
-                                )
-                            )
-                        )    
-                    }
+                    // points.borrow()[isize::max(0, points.borrow().len() as isize - 4) as usize..];
+                    self.temp_constraint.push(Box::new(RColl::new(
+                        [a.get_body(), b.get_body()],
+                        // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
+                        // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
+                        result,
+                        // [Vec3::zero(), Vec3::zero()],
+                        // collision_normals[pair_index].unwrap(),
+                        normal,
+                        depth / 4.0,
+                        // actual_normal,
+                        // actual_depth,
+                        0.00000,
+                    )))
                 }
             }
 
@@ -158,11 +260,11 @@ impl Physics {
 
             for _ in 0..self.iterations {
                 for constraint in &mut self.temp_constraint {
-                    constraint.iterate(dt/(self.iterations as f32));
+                    constraint.iterate(dt / (self.iterations as f32));
                 }
                 for constraint in &mut self.constraint {
-                    constraint.iterate(dt/(self.iterations as f32));
-                } 
+                    constraint.iterate(dt / (self.iterations as f32));
+                }
 
                 for body in &self.bodies {
                     body.as_ref().borrow_mut().iterate();

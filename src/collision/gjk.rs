@@ -1,7 +1,7 @@
 use std::collections::hash_set::SymmetricDifference;
 use std::f32::consts::FRAC_PI_3;
 
-use super::polytope::Polytope;
+use super::polytope::{get_ccw_normal, Polytope};
 use super::simplex::*;
 use super::{collider::*, polytope};
 use three_d::*;
@@ -456,7 +456,16 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
 
             // return (n.normalize(), mindist, a.to_local(pa), b.to_local(pb));
             let normal = n.normalize();
-            return (normal, mindist, a.to_local(pa), b.to_local(pb));
+            if (normal.y.abs() - 1.0).abs() > 0.01 {
+                // println!("{:?}", normal);
+                // println!("{polytope}");    
+                // println!("{:?}", a.get_body().as_ref().borrow().pos());
+                // println!("{:?}", a.get_body().as_ref().borrow().apos());
+                // println!("{:?}", b.get_body().as_ref().borrow().pos());
+                // println!("{:?}", b.get_body().as_ref().borrow().apos());
+            }
+            // return (normal, mindist, a.to_local(pa), b.to_local(pb));
+            return (normal, mindist, pa.to_vec(), pb.to_vec());
         } else {
             mindist_global = mindist;
             closest_global = closest_triangle;
@@ -470,7 +479,7 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
             &polytope.vertices()[face[2]],
         ];
 
-        let n = (triangle[1] - triangle[0]).cross(triangle[2] - triangle[0]);
+        let mut n = get_ccw_normal(triangle[0], triangle[1], triangle[2]);
 
         polytope.expand(support(&a, &b, n), n);
     }

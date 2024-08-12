@@ -6,44 +6,12 @@ use three_d::*;
 use std::fmt;
 use std::mem::swap;
 
-mod unordered_pair {
-    #[derive(PartialEq, Eq, Hash, Clone, Copy)]
-    pub struct UnorderedPair<T> {
-        a: T,
-        b: T,
-    }
-
-    impl<T: Ord + Copy> UnorderedPair<T> {
-        fn new(a: T, b: T) -> Self {
-            if a < b {
-                return UnorderedPair { b, a };
-            }
-            UnorderedPair { a, b }
-        }
-
-        pub fn a(&self) -> T {
-            self.a
-        }
-        pub fn b(&self) -> T {
-            self.b
-        }
-    }
-
-    impl<T: Ord + Copy> From<(T, T)> for UnorderedPair<T> {
-        fn from(x: (T, T)) -> Self {
-            Self::new(x.0, x.1)
-        }
-    }
-}
-use self::unordered_pair::UnorderedPair;
-
-fn get_ccw_normal(a: Point3<f32>, b: Point3<f32>, c: Point3<f32>) -> Vec3 {
-    // Get outward facing normal for ccw triangle
-    return (a - b).cross(c - a);
+pub fn get_ccw_normal(a: &Point3<f32>, b: &Point3<f32>, c: &Point3<f32>) -> Vec3 {
+    (b - a).cross(c - a)
 }
 
 fn should_swap_winding(a: Point3<f32>, b: Point3<f32>, c: Point3<f32>, align: Vec3) -> bool {
-    let normal = get_ccw_normal(a, b, c);
+    let normal = get_ccw_normal(&a, &b, &c);
     if normal.dot(align) < 0.0 {
         return true;
     }
@@ -91,12 +59,12 @@ impl Polytope {
         self.vertices.push(p);
         self.dirs.push(dir);
         let mut faces_after: Vec<[usize; 3]> = Vec::new();
-        let mut new_edges: Vec<(usize, usize)> = Vec::new();
+        let mut new_edges: HashSet<(usize, usize)> = HashSet::new();
         for face in &self.faces {
             let normal = get_ccw_normal(
-                self.vertices[face[0]],
-                self.vertices[face[1]],
-                self.vertices[face[2]],
+                &self.vertices[face[0]],
+                &self.vertices[face[1]],
+                &self.vertices[face[2]],
             );
 
             if normal.dot(p - self.vertices[face[0]]) > 0.0 {
@@ -110,20 +78,20 @@ impl Polytope {
                 let ca: (usize, usize) = (face[2], face[0]);
                 let ac: (usize, usize) = (face[0], face[2]);
 
-                if let Some(index) = new_edges.iter().position(|n| n == &ba) {
-                    new_edges.remove(index);
+                if new_edges.contains(&ba) {
+                    new_edges.remove(&ba);
                 } else {
-                    new_edges.push(ab);
+                    new_edges.insert(ab);
                 }
-                if let Some(index) = new_edges.iter().position(|n| n == &cb) {
-                    new_edges.remove(index);
+                if new_edges.contains(&cb) {
+                    new_edges.remove(&cb);
                 } else {
-                    new_edges.push(bc);
+                    new_edges.insert(bc);
                 }
-                if let Some(index) = new_edges.iter().position(|n| n == &ac) {
-                    new_edges.remove(index);
+                if new_edges.contains(&ac) {
+                    new_edges.remove(&ac);
                 } else {
-                    new_edges.push(ca);
+                    new_edges.insert(ca);
                 }
             } else {
                 faces_after.push(face.clone());
@@ -142,8 +110,6 @@ impl Polytope {
         }
 
         self.faces = faces_after;
-
-        println!("{self}");
     }
 
     pub fn faces(&self) -> &Vec<[usize; 3]> {
