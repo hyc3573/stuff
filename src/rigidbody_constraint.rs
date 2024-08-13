@@ -84,7 +84,7 @@ impl Constraint for RDist {
             )
         }
 
-        result[0] *= -1.0;
+        // result[1] *= -1.0;
 
         result
         // vec![Quat::zero(), Quat::zero()]
@@ -158,8 +158,16 @@ impl RColl {
             .map(|(i, c)| {
                 // self.bodies[i].as_ref().borrow().apos().rotate_vector(self.bodies[i].as_ref().borrow().to_local(*c))
                 (
-                    self.bodies[0].as_ref().borrow().apos().rotate_vector(self.bodies[0].as_ref().borrow().to_local(*c)),
-                    self.bodies[0].as_ref().borrow().apos().rotate_vector(self.bodies[1].as_ref().borrow().to_local(*c)),
+                    self.bodies[0]
+                        .as_ref()
+                        .borrow()
+                        .apos()
+                        .rotate_vector(self.bodies[0].as_ref().borrow().to_local(*c)),
+                    self.bodies[0]
+                        .as_ref()
+                        .borrow()
+                        .apos()
+                        .rotate_vector(self.bodies[1].as_ref().borrow().to_local(*c)),
                 )
             })
             .collect::<Vec<(Vec3, Vec3)>>()
@@ -170,7 +178,7 @@ impl Constraint for RColl {
     constraint_getset!(2);
 
     fn C(&self) -> f32 {
-        self.depth * 1.0
+        self.depth / 1.0
     }
 
     fn dC(&self) -> Vec<Vec3> {
@@ -182,13 +190,13 @@ impl Constraint for RColl {
         for r in self.r() {
             // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
             result[0] +=
-                (0.5 * Quat::from_sv(
+                (0.5 / (self.r().len() as f32) * Quat::from_sv(
                     0.0,
                     self.bodies()[0].as_ref().borrow().invinertia()
                         * r.0.cross(self.dC()[0] * dlambda),
                 )) * self.bodies()[0].as_ref().borrow().apos();
             result[1] +=
-                (0.5 * Quat::from_sv(
+                (0.5 / (self.r().len() as f32) * Quat::from_sv(
                     0.0,
                     self.bodies()[1].as_ref().borrow().invinertia()
                         * r.1.cross(self.dC()[1] * dlambda),
@@ -198,6 +206,7 @@ impl Constraint for RColl {
         // result[0] = result[0].invert();
         // result[1] = result[1].invert();
         // println!("{} {} {} {} / {} {} {} {}", result[0].v.x, result[0].v.y, result[0].v.z, result[0].s, result[1].v.x, result[1].v.y, result[1].v.z, result[1].s);
+        result[0] *= -1.0;
 
         result
         // vec![Quat::zero(), Quat::zero()]
@@ -206,18 +215,17 @@ impl Constraint for RColl {
     fn invmass_sum(&self) -> f32 {
         let mut sum: f32 = 0.0;
 
-        for i in 0..self.len() {
-            for r in self.r() {
-                sum += self.bodies()[i].as_ref().borrow().invmass()
-                    + r.0.cross(self.normal).dot(
-                        self.bodies()[i].as_ref().borrow().invinertia() * r.0.cross(self.normal),
-                    );
+        for r in self.r() {
+            sum += self.bodies()[0].as_ref().borrow().invmass();
+            sum += self.bodies()[1].as_ref().borrow().invmass();
 
-                sum += self.bodies()[i].as_ref().borrow().invmass()
-                    + r.1.cross(self.normal).dot(
-                        self.bodies()[i].as_ref().borrow().invinertia() * r.1.cross(self.normal),
-                    );
-            }
+            sum +=
+                r.0.cross(self.normal)
+                .dot(self.bodies()[0].as_ref().borrow().invinertia() * r.0.cross(self.normal)) / (self.r().len() as f32);
+
+            sum +=
+                r.1.cross(self.normal)
+                .dot(self.bodies()[1].as_ref().borrow().invinertia() * r.1.cross(self.normal)) / (self.r().len() as f32);
         }
 
         sum
@@ -240,7 +248,6 @@ impl Constraint for RColl {
             // println!("{}", v_normal);
             let v_tangential = v - normal * v_normal;
 
-
             if v_normal.abs() > 0.0 {
                 let v_normal_original = normal.dot(self.original_velocity[i]);
                 // println!("{}", v_normal_original);
@@ -251,7 +258,7 @@ impl Constraint for RColl {
             }
 
             let v_tangential_abs = v_tangential.magnitude();
-            let u = 0.0;
+            let u = 0.9;
             if v_tangential_abs > f32::EPSILON {
                 dv -= v_tangential / v_tangential_abs
                     * f32::min(u * self.lambda.abs() / dt, v_tangential_abs);
@@ -269,12 +276,12 @@ impl Constraint for RColl {
 
                 let new_avel = body.as_ref().borrow().avel()
                     + body.as_ref().borrow().invinertia()
-                    * ((if i == 0 { r.0 } else { r.1 }).cross(p))
-                    * (if i == 0 { 1.0 } else { -1.0 });
+                        * ((if i == 0 { r.0 } else { r.1 }).cross(p))
+                        * (if i == 0 { 1.0 } else { -1.0 });
                 body.as_ref().borrow_mut().set_avel(new_avel);
-            }    
+            }
         }
-        
+
         // let vel = self.bodies[0].as_ref().borrow().vel();
         // self.bodies[0].as_ref().borrow_mut().set_vel(vel - normal*vel.dot(normal));
 

@@ -17,7 +17,7 @@ use std::rc::Rc;
 use std::time::Instant;
 use stuff_lib::inertiatensor::*;
 
-const CUBES: usize = 5;
+const CUBES: usize = 1;
 
 fn main() {
     let window = Window::new(WindowSettings {

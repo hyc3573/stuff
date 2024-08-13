@@ -243,10 +243,10 @@ impl Physics {
                         // [Vec3::zero(), Vec3::zero()],
                         // collision_normals[pair_index].unwrap(),
                         normal,
-                        depth / 4.0,
+                        depth / 1.0,
                         // actual_normal,
                         // actual_depth,
-                        0.00000,
+                        0.000000,
                     )))
                 }
             }

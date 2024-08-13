@@ -7,11 +7,11 @@ use crate::collision::collider::Collider;
 pub struct RigidBody {
     pos_prev: Vec3,
     pos: Vec3,
-    pos_new: Vec3,
+    // pos_new: Vec3,
 
     apos_prev: Quat,
     apos: Quat,
-    apos_new: Quat,
+    // apos_new: Quat,
 
     vel: Vec3,
     acc: Vec3,
@@ -38,11 +38,11 @@ impl RigidBody {
         Self {
             pos_prev: pos,
             pos,
-            pos_new: pos,
+            // pos_new: pos,
 
             apos_prev: apos,
             apos,
-            apos_new: apos,
+            // apos_new: apos,
 
             vel: Vec3::zero(),
             acc: Vec3::zero(),

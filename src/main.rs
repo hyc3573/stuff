@@ -196,7 +196,7 @@ fn main() {
             Quat::one(),
             1.0/100.0,
             // zeroinertia_mass()
-            cubeinertia_mass(0.01)
+            cubeinertia_mass(1.0)
             // sphereinertia_mass(0.01)
         ),
     );
