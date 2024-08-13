@@ -109,8 +109,8 @@ impl Constraint for RDist {
 
 pub struct RColl {
     bodies: [Rc<RefCell<dyn Body>>; 2],
-    original_velocity: Vec<Vec3>,
-    contacts: Vec<Vec3>,
+    original_velocity: Vec3,
+    contacts: [Vec3; 2],
     normal: Vec3,
     depth: f32,
     lambda: f32,
@@ -120,14 +120,14 @@ pub struct RColl {
 impl RColl {
     pub fn new(
         bodies: [Rc<RefCell<dyn Body>>; 2],
-        contacts: Vec<Vec3>,
+        contacts: [Vec3; 2],
         normal: Vec3,
         depth: f32,
         compliance: f32,
     ) -> Self {
         let mut result = Self {
             bodies,
-            original_velocity: Vec::new(),
+            original_velocity: Vec3::zero(),
             contacts, // global coordinate
             normal,
             depth,
@@ -135,42 +135,30 @@ impl RColl {
             compliance,
         };
 
-        let original_velocity = result
-            .r()
-            .iter()
-            .map(|r| {
-                (result.bodies[0].as_ref().borrow().vel()
-                    + result.bodies[0].as_ref().borrow().avel().cross(r.0))
-                    - (result.bodies[1].as_ref().borrow().vel()
-                        + result.bodies[1].as_ref().borrow().avel().cross(r.1))
-            })
-            .collect();
+        let r = result.r();
+        let original_velocity = result.bodies[0].as_ref().borrow().vel()
+            + result.bodies[0].as_ref().borrow().avel().cross(r.0)
+            - (result.bodies[1].as_ref().borrow().vel()
+                + result.bodies[1].as_ref().borrow().avel().cross(r.1));
 
         result.original_velocity = original_velocity;
 
         result
     }
 
-    fn r(&self) -> Vec<(Vec3, Vec3)> {
-        self.contacts
-            .iter()
-            .enumerate()
-            .map(|(i, c)| {
-                // self.bodies[i].as_ref().borrow().apos().rotate_vector(self.bodies[i].as_ref().borrow().to_local(*c))
-                (
-                    self.bodies[0]
-                        .as_ref()
-                        .borrow()
-                        .apos()
-                        .rotate_vector(self.bodies[0].as_ref().borrow().to_local(*c)),
-                    self.bodies[0]
-                        .as_ref()
-                        .borrow()
-                        .apos()
-                        .rotate_vector(self.bodies[1].as_ref().borrow().to_local(*c)),
-                )
-            })
-            .collect::<Vec<(Vec3, Vec3)>>()
+    fn r(&self) -> (Vec3, Vec3) {
+        (
+            self.bodies[0]
+                .as_ref()
+                .borrow()
+                .apos()
+                .rotate_vector(self.bodies[0].as_ref().borrow().to_local(self.contacts[0])),
+            self.bodies[1]
+                .as_ref()
+                .borrow()
+                .apos()
+                .rotate_vector(self.bodies[1].as_ref().borrow().to_local(self.contacts[1])),
+        )
     }
 }
 
@@ -187,21 +175,18 @@ impl Constraint for RColl {
 
     fn dq(&self, dlambda: f32) -> Vec<Quat> {
         let mut result = vec![Quat::zero(), Quat::zero()];
-        for r in self.r() {
-            // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
-            result[0] +=
-                (0.5 / (self.r().len() as f32) * Quat::from_sv(
-                    0.0,
-                    self.bodies()[0].as_ref().borrow().invinertia()
-                        * r.0.cross(self.dC()[0] * dlambda),
-                )) * self.bodies()[0].as_ref().borrow().apos();
-            result[1] +=
-                (0.5 / (self.r().len() as f32) * Quat::from_sv(
-                    0.0,
-                    self.bodies()[1].as_ref().borrow().invinertia()
-                        * r.1.cross(self.dC()[1] * dlambda),
-                )) * self.bodies()[1].as_ref().borrow().apos();
-        }
+        // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
+        let r = self.r();
+        result[0] +=
+            0.5 * Quat::from_sv(
+                0.0,
+                self.bodies()[0].as_ref().borrow().invinertia() * r.0.cross(self.dC()[0] * dlambda),
+            ) * self.bodies()[0].as_ref().borrow().apos();
+        result[1] +=
+            0.5 * Quat::from_sv(
+                0.0,
+                self.bodies()[1].as_ref().borrow().invinertia() * r.1.cross(self.dC()[1] * dlambda),
+            ) * self.bodies()[1].as_ref().borrow().apos();
 
         // result[0] = result[0].invert();
         // result[1] = result[1].invert();
@@ -215,18 +200,17 @@ impl Constraint for RColl {
     fn invmass_sum(&self) -> f32 {
         let mut sum: f32 = 0.0;
 
-        for r in self.r() {
-            sum += self.bodies()[0].as_ref().borrow().invmass();
-            sum += self.bodies()[1].as_ref().borrow().invmass();
+        let r = self.r();
+        sum += self.bodies()[0].as_ref().borrow().invmass();
+        sum += self.bodies()[1].as_ref().borrow().invmass();
 
-            sum +=
-                r.0.cross(self.normal)
-                .dot(self.bodies()[0].as_ref().borrow().invinertia() * r.0.cross(self.normal)) / (self.r().len() as f32);
+        sum +=
+            r.0.cross(self.normal)
+                .dot(self.bodies()[0].as_ref().borrow().invinertia() * r.0.cross(self.normal));
 
-            sum +=
-                r.1.cross(self.normal)
-                .dot(self.bodies()[1].as_ref().borrow().invinertia() * r.1.cross(self.normal)) / (self.r().len() as f32);
-        }
+        sum +=
+            r.1.cross(self.normal)
+                .dot(self.bodies()[1].as_ref().borrow().invinertia() * r.1.cross(self.normal));
 
         sum
     }
@@ -237,49 +221,46 @@ impl Constraint for RColl {
         let normal = self.normal;
         let mut dv = Vec3::zero();
 
-        for (i, r) in self.r().iter().enumerate() {
-            let v = (self.bodies[0].as_ref().borrow().vel()
-                + self.bodies[0].as_ref().borrow().avel().cross(r.0))
-                - (self.bodies[1].as_ref().borrow().vel()
-                    + self.bodies[1].as_ref().borrow().avel().cross(r.1));
-            // println!("{:?}", v);
+        let r = self.r();
+        let v = (self.bodies[0].as_ref().borrow().vel()
+            + self.bodies[0].as_ref().borrow().avel().cross(r.0))
+            - (self.bodies[1].as_ref().borrow().vel()
+                + self.bodies[1].as_ref().borrow().avel().cross(r.1));
+        // println!("{:?}", v);
 
-            let v_normal = normal.dot(v);
-            // println!("{}", v_normal);
-            let v_tangential = v - normal * v_normal;
+        let v_normal = normal.dot(v);
+        // println!("{}", v_normal);
+        let v_tangential = v - normal * v_normal;
 
-            if v_normal.abs() > 0.0 {
-                let v_normal_original = normal.dot(self.original_velocity[i]);
-                // println!("{}", v_normal_original);
-                let e = 0.9;
-                dv += normal * (-v_normal + f32::min(-e * v_normal_original, 0.0));
-            } else {
-                dv += -normal * v_normal;
-            }
-
-            let v_tangential_abs = v_tangential.magnitude();
-            let u = 0.9;
-            if v_tangential_abs > f32::EPSILON {
-                dv -= v_tangential / v_tangential_abs
-                    * f32::min(u * self.lambda.abs() / dt, v_tangential_abs);
-            }
-            // println!("{:?}", dv);
+        if v_normal.abs() > 0.0 {
+            let v_normal_original = normal.dot(self.original_velocity);
+            // println!("{}", v_normal_original);
+            let e = 0.9;
+            dv += normal * (-v_normal + f32::min(-e * v_normal_original, 0.0));
+        } else {
+            dv += -normal * v_normal;
         }
+
+        let v_tangential_abs = v_tangential.magnitude();
+        let u = 0.9;
+        if v_tangential_abs > f32::EPSILON {
+            dv -= v_tangential / v_tangential_abs
+                * f32::min(u * self.lambda.abs() / dt, v_tangential_abs);
+        }
+        // println!("{:?}", dv);
 
         let p = dv / self.invmass_sum();
 
-        for (i, r) in self.r().iter().enumerate() {
-            for (i, body) in self.bodies.iter().enumerate() {
-                let new_vel = body.as_ref().borrow().vel()
-                    + p * body.as_ref().borrow().invmass() * (if i == 0 { 1.0 } else { -1.0 });
-                body.as_ref().borrow_mut().set_vel(new_vel);
+        for (i, body) in self.bodies.iter().enumerate() {
+            let new_vel = body.as_ref().borrow().vel()
+                + p * body.as_ref().borrow().invmass() * (if i == 0 { 1.0 } else { -1.0 });
+            body.as_ref().borrow_mut().set_vel(new_vel);
 
-                let new_avel = body.as_ref().borrow().avel()
-                    + body.as_ref().borrow().invinertia()
-                        * ((if i == 0 { r.0 } else { r.1 }).cross(p))
-                        * (if i == 0 { 1.0 } else { -1.0 });
-                body.as_ref().borrow_mut().set_avel(new_avel);
-            }
+            let new_avel = body.as_ref().borrow().avel()
+                + body.as_ref().borrow().invinertia()
+                    * ((if i == 0 { r.0 } else { r.1 }).cross(p))
+                    * (if i == 0 { 1.0 } else { -1.0 });
+            body.as_ref().borrow_mut().set_avel(new_avel);
         }
 
         // let vel = self.bodies[0].as_ref().borrow().vel();

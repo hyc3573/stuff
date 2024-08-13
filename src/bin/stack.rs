@@ -97,7 +97,7 @@ fn main() {
     for i in 0..CUBES {
         bodies.push(physics.add_body(
             RigidBody::new(
-                vec3(0.0, 0.0 + ((i+1) as f32)*2.0, 0.01*i as f32 + 0.00),
+                vec3(0.0, -1.9 + ((i+1) as f32)*2.0, 0.01*i as f32 + 0.00),
                 Quat::one(),
                 1.0/100.0,
                 cubeinertia_mass(1.0)
@@ -120,7 +120,7 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*1.0);
+        physics.update(dt*0.5);
 
         base_cube.set_transformation(
             base_body.as_ref().borrow().get_matrix()*Mat4::from_scale(4.5)

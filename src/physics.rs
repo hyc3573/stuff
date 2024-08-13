@@ -162,9 +162,11 @@ impl Physics {
                     let ref_face;
                     let mut adj_face_normals = Vec::new();
 
+                    let mut a_is_ref;
                     if a_normal.normalize().dot(normal) < b_normal.normalize().dot(-normal) {
                         inc_face = b_face;
                         ref_face = a_face;
+                        a_is_ref = true;
 
                         for (edge_a, edge_b) in
                             a_ref.iter().chain([a_ref[0]].iter()).tuple_windows()
@@ -182,6 +184,7 @@ impl Physics {
                     } else {
                         inc_face = a_face;
                         ref_face = b_face;
+                        a_is_ref = false;
 
                         for (edge_a, edge_b) in
                             b_ref.iter().chain([b_ref[0]].iter()).tuple_windows()
@@ -198,8 +201,8 @@ impl Physics {
                         }
                     }
                     let adj_face_normals = adj_face_normals;
-
-                    let mut result = inc_face;
+                    
+                    let mut result = inc_face.clone();
                     // println!("-----");
                     // println!("{:?}", (ref_face[1] - ref_face[0]).cross(ref_face[2] - ref_face[0]));
                     // println!("{}", result.len());
@@ -215,39 +218,54 @@ impl Physics {
                         false,
                     );
 
-                    // println!("{:?}", result);
-                    // println!("---");
+                    for contact_inc in result {
+                        // Project contact to incident face
 
-                    // if collision_normals[pair_index].is_none() {
-                    //     collision_normals[pair_index] = Some(normal);
-                    // }
-                    // let normal = collision_normals[pair_index].unwrap();
+                        let closest_point = ref_face.iter().fold(
+                            (-f32::INFINITY, Vec3::zero()),
+                            |(max, point_max), v| {
+                                let value = v.distance2(contact_inc);
+                                if max > value {
+                                    (max, point_max)
+                                } else {
+                                    (value, *v)
+                                }
+                            }
+                        ).1;
+                        let point_diff = contact_inc - closest_point;
+                        let contact_peneration;
 
-                    // let posa = a.get_body().as_ref().borrow().pos();
-                    // let posb = b.get_body().as_ref().borrow().pos();
-                    // let dx = posa - posb;
-                    // let dist = dx.magnitude();
-                    // let normal = dx/dist;
-                    // let depth = f32::max(0.0, (posa - posb).dot(normal));
+                        let contacts;
+                        if !a_is_ref {
+                            contact_peneration = point_diff.dot(normal);
+                            contacts = [
+                                contact_inc - contact_peneration*normal,
+                                contact_inc
+                            ];
+                        } else {
+                            contact_peneration = point_diff.dot(-normal);
+                            contacts = [
+                                contact_inc,
+                                contact_inc + contact_peneration*normal
+                            ];
+                        }
+                        println!("{:?}", contacts);
+                        println!("{contact_peneration}");
 
-                    // println!("------");
-                    // println!("{:?} {:?}", a.get_body().as_ref().borrow().pos(), a.get_body().as_ref().borrow().apos());
-                    // println!("{}", (a.get_body().as_ref().borrow().pos_at(va) - b.get_body().as_ref().borrow().pos_at(vb)).magnitude());
-
-                    // points.borrow()[isize::max(0, points.borrow().len() as isize - 4) as usize..];
-                    self.temp_constraint.push(Box::new(RColl::new(
-                        [a.get_body(), b.get_body()],
-                        // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
-                        // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
-                        result,
-                        // [Vec3::zero(), Vec3::zero()],
-                        // collision_normals[pair_index].unwrap(),
-                        normal,
-                        depth / 1.0,
-                        // actual_normal,
-                        // actual_depth,
-                        0.000000,
-                    )))
+                        self.temp_constraint.push(Box::new(RColl::new(
+                            [a.get_body(), b.get_body()],
+                            // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
+                            // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
+                            contacts,
+                            // [Vec3::zero(), Vec3::zero()],
+                            // collision_normals[pair_index].unwrap(),
+                            normal,
+                            contact_peneration,
+                            // actual_normal,
+                            // actual_depth,
+                            0.000001,
+                        )))
+                    }
                 }
             }
 
@@ -288,7 +306,6 @@ impl Physics {
             for constraint in &mut self.constraint {
                 constraint.velocity_update(dt);
             }
-
 
             // let pos = self.bodies[3].as_ref().borrow().pos();
             // println!("{} {} {}", pos.x, pos.y, pos.z);
