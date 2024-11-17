@@ -201,7 +201,7 @@ impl Physics {
                         }
                     }
                     let adj_face_normals = adj_face_normals;
-                    
+
                     let mut result = inc_face.clone();
                     // println!("-----");
                     // println!("{:?}", (ref_face[1] - ref_face[0]).cross(ref_face[2] - ref_face[0]));
@@ -218,54 +218,51 @@ impl Physics {
                         false,
                     );
 
+                    let mut contact_list = Vec::new();
+                    let mut depth_list = Vec::new();
                     for contact_inc in result {
                         // Project contact to incident face
 
-                        let closest_point = ref_face.iter().fold(
-                            (-f32::INFINITY, Vec3::zero()),
-                            |(max, point_max), v| {
+                        let closest_point = ref_face
+                            .iter()
+                            .fold((-f32::INFINITY, Vec3::zero()), |(max, point_max), v| {
                                 let value = v.distance2(contact_inc);
                                 if max > value {
                                     (max, point_max)
                                 } else {
                                     (value, *v)
                                 }
-                            }
-                        ).1;
+                            })
+                            .1;
                         let point_diff = contact_inc - closest_point;
                         let contact_peneration;
 
                         let contacts;
                         if !a_is_ref {
                             contact_peneration = point_diff.dot(normal);
-                            contacts = [
-                                contact_inc - contact_peneration*normal,
-                                contact_inc
-                            ];
+                            contacts = (contact_inc - contact_peneration * normal, contact_inc);
                         } else {
                             contact_peneration = point_diff.dot(-normal);
-                            contacts = [
-                                contact_inc,
-                                contact_inc + contact_peneration*normal
-                            ];
+                            contacts = (contact_inc, contact_inc + contact_peneration * normal);
                         }
-                        println!("{:?}", contacts);
-                        println!("{contact_peneration}");
-
-                        self.temp_constraint.push(Box::new(RColl::new(
-                            [a.get_body(), b.get_body()],
-                            // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
-                            // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
-                            contacts,
-                            // [Vec3::zero(), Vec3::zero()],
-                            // collision_normals[pair_index].unwrap(),
-                            normal,
-                            contact_peneration,
-                            // actual_normal,
-                            // actual_depth,
-                            0.000001,
-                        )))
+                        println!("{}", contact_peneration);
+                        contact_list.push(contacts);
+                        depth_list.push(contact_peneration);
                     }
+
+                    self.temp_constraint.push(Box::new(RColl::new(
+                        [a.get_body(), b.get_body()],
+                        // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
+                        // [a.get_body().as_ref().borrow().pos_at(va), b.get_body().as_ref().borrow().pos_at(vb)],
+                        contact_list,
+                        // [Vec3::zero(), Vec3::zero()],
+                        // collision_normals[pair_index].unwrap(),
+                        normal,
+                        depth_list,
+                        // actual_normal,
+                        // actual_depth,
+                        0.0000001,
+                    )))
                 }
             }
 
