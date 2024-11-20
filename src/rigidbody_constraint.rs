@@ -329,15 +329,16 @@ impl Constraint for RColl {
             // println!("{:?}", v);
 
             let v_normal = normal.dot(v);
-            // println!("{}", v_normal);
             let v_tangential = v - normal * v_normal;
 
             if v_normal.abs() > 0.0 {
                 let v_normal_original = normal.dot(self.original_velocity[i]);
                 // println!("{}", v_normal_original);
-                let e = 0.9;
+                let e = 1.0;
+                println!("fuck{}", (v_normal -v_normal + f32::min(-e * v_normal_original, 0.0)));
                 dv_vec[i] += normal * (-v_normal + f32::min(-e * v_normal_original, 0.0));
             } else {
+                println!("asdf1");
                 dv_vec[i] += -normal * v_normal;
             }
 
@@ -346,6 +347,8 @@ impl Constraint for RColl {
             if v_tangential_abs > f32::EPSILON {
                 dv_vec[i] -= v_tangential / v_tangential_abs
                     * f32::min(u * self.lambda[i].abs() / dt, v_tangential_abs);
+            } else {
+                println!("asdf");
             }
         }
 

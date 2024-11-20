@@ -250,6 +250,8 @@ impl Physics {
                         depth_list.push(contact_peneration);
                     }
 
+                    let n = contact_list.len();
+
                     self.temp_constraint.push(Box::new(RColl::new(
                         [a.get_body(), b.get_body()],
                         // [a.get_body().as_ref().borrow().apos().rotate_vector(*va), b.get_body().as_ref().borrow().apos().rotate_vector(*va)],
@@ -258,10 +260,10 @@ impl Physics {
                         // [Vec3::zero(), Vec3::zero()],
                         // collision_normals[pair_index].unwrap(),
                         normal,
-                        depth_list,
+                        vec![depth; n],
                         // actual_normal,
                         // actual_depth,
-                        0.0000001,
+                        0.000000,
                     )))
                 }
             }
