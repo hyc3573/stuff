@@ -142,7 +142,7 @@ impl RColl {
             result.original_velocity[i] = result.bodies[0].as_ref().borrow().vel()
                 + result.bodies[0].as_ref().borrow().avel().cross(r[i].0)
                 - (result.bodies[1].as_ref().borrow().vel()
-                    + result.bodies[1].as_ref().borrow().avel().cross(r[i].1));
+                   + result.bodies[1].as_ref().borrow().avel().cross(r[i].1));
         }
 
         result
@@ -152,25 +152,14 @@ impl RColl {
         (0..self.contacts.len())
             .map(|i| {
                 (
-                    self.bodies[0].as_ref().borrow().apos().rotate_vector(
-                        self.bodies[0]
-                            .as_ref()
-                            .borrow()
-                            .to_local(self.contacts[i].0),
-                    ),
-                    self.bodies[1].as_ref().borrow().apos().rotate_vector(
-                        self.bodies[1]
-                            .as_ref()
-                            .borrow()
-                            .to_local(self.contacts[i].1),
-                    ),
+                    self.contacts[i].0 - self.bodies[0].as_ref().borrow().pos(),
+                    self.contacts[i].1 - self.bodies[1].as_ref().borrow().pos(),
                 )
             })
             .collect()
     }
 
     fn dq_vec(&self, dlambda: f32, i: usize) -> (Quat, Quat) {
-        let mut result = vec![Quat::zero(), Quat::zero()];
         // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
         let r = self.r();
         (
@@ -281,35 +270,41 @@ impl Constraint for RColl {
     }
 
     fn iterate(&mut self, dt: f32) {
-        let mut dx_vec = vec![vec![Vec3::zero(), Vec3::zero()]; self.contacts.len()];
+        // let mut dx_vec = vec![vec![Vec3::zero(), Vec3::zero()]; self.contacts.len()];
         let mut dq_vec = vec![(Quat::zero(), Quat::zero()); self.contacts.len()];
         let mut dlambda_vec = vec![0.0; self.contacts.len()];
 
         for i in 0..self.contacts.len() {
             let dlambda = self.dlambda_vec(dt)[i];
-            dx_vec[i] = self.dx(dlambda);
+            // dx_vec[i] = self.dx(dlambda);
             dq_vec[i] = self.dq_vec(dlambda, i);
             dlambda_vec[i] = dlambda;
         }
         // self.update_lambda(dlambda);
 
-        for j in 0..self.contacts.len() {
-            self.lambda[j] += dlambda_vec[j];
+        for i in 0..self.contacts.len() {
+            self.lambda[i] += dlambda_vec[i];
+
+            let w0 = self.bodies()[0].as_ref().borrow().invmass();
+            let w1 = self.bodies()[1].as_ref().borrow().invmass();
 
             self.bodies()[0]
                 .as_ref()
                 .borrow_mut()
-                .update_pos(dx_vec[j][0] * 1.0);
+                .update_pos(dlambda_vec[i]*self.dC()[0]*w0/(self.contacts.len() as f32));
             self.bodies()[1]
                 .as_ref()
                 .borrow_mut()
-                .update_pos(dx_vec[j][1] * 1.0);
-            if dq_vec[j].0.magnitude2() < f32::EPSILON*f32::EPSILON ||
-                dq_vec[j].1.magnitude2() < f32::EPSILON*f32::EPSILON {
-                    continue;;
-                }
-            self.bodies()[0].as_ref().borrow_mut().add_apos(dq_vec[j].0);
-            self.bodies()[1].as_ref().borrow_mut().add_apos(dq_vec[j].1);
+                .update_pos(dlambda_vec[i]*self.dC()[1]*w1/(self.contacts.len() as f32));
+            /* if dq_vec[i].0.magnitude2() < f32::EPSILON &&
+                dq_vec[i].1.magnitude2() < f32::EPSILON {
+                    continue;
+                } */
+            // println!("{i} 0 {:#?}", dq_vec[i].0);
+            // println!("{i} 1 {:#?}", dq_vec[i].1);
+            
+            self.bodies()[0].as_ref().borrow_mut().add_apos(dq_vec[i].0);
+            self.bodies()[1].as_ref().borrow_mut().add_apos(dq_vec[i].1);
         }
     }
 
@@ -333,22 +328,18 @@ impl Constraint for RColl {
 
             if v_normal.abs() > 0.0 {
                 let v_normal_original = normal.dot(self.original_velocity[i]);
-                // println!("{}", v_normal_original);
-                let e = 1.0;
-                println!("fuck{}", (v_normal -v_normal + f32::min(-e * v_normal_original, 0.0)));
-                dv_vec[i] += normal * (-v_normal + f32::min(-e * v_normal_original, 0.0));
+                let e = 0.0;
+                dv_vec[i] += normal * (-v_normal - f32::min(-e * v_normal_original, 0.0));
             } else {
-                println!("asdf1");
                 dv_vec[i] += -normal * v_normal;
             }
 
             let v_tangential_abs = v_tangential.magnitude();
-            let u = 0.9;
+            let u = 0.5;
             if v_tangential_abs > f32::EPSILON {
                 dv_vec[i] -= v_tangential / v_tangential_abs
-                    * f32::min(u * self.lambda[i].abs() / dt, v_tangential_abs);
+                    * f32::min(u * self.lambda[i].abs() / dt / dt, v_tangential_abs);
             } else {
-                println!("asdf");
             }
         }
 
@@ -356,13 +347,19 @@ impl Constraint for RColl {
 
         for j in 0..self.contacts.len() {
             // let p = dv_vec[j] / self.invmass_sum_vec()[j] / (self.contacts.len() as f32);
-            let p = dv_vec[j] / self.invmass_sum_vec()[j];
-            // let p = dv / self.invmass_sum_vec()[j];
+            let p = dv_vec[j] / self.invmass_sum_vec().iter().sum();
+            // let p = dv_vec[j] / self.invmass_sum_vec()[j];
+            // println!("{j}");
+            // println!("{}", self.bodies[0].as_ref().borrow().invmass());
+            // println!("{:?}", p);
+
+            // println!("{j} {}", self.invmass_sum_vec()[j]);
 
             for (i, body) in self.bodies.iter().enumerate() {
                 let new_vel = body.as_ref().borrow().vel()
-                    + p * body.as_ref().borrow().invmass() * (if i == 0 { 1.0 } else { -1.0 }) / (self.contacts.len() as f32);
+                    + p * body.as_ref().borrow().invmass() * (if i == 0 { -1.0 } else { 1.0 }); // (self.contacts.len() as f32);
                 body.as_ref().borrow_mut().set_vel(new_vel);
+                // body.as_ref().borrow_mut().set_vel(Vec3::zero());
 
                 let new_avel = body.as_ref().borrow().avel()
                     + body.as_ref().borrow().invinertia()

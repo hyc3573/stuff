@@ -16,8 +16,10 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::time::Instant;
 use stuff_lib::inertiatensor::*;
+use std::{thread, time};
+use std::time::Duration;
 
-const CUBES: usize = 1;
+const CUBES: usize = 2;
 
 fn main() {
     let window = Window::new(WindowSettings {
@@ -53,7 +55,7 @@ fn main() {
             &context,
             &CpuMaterial {
                 name: "asdf".to_string(),
-                albedo: Srgba::BLUE,
+                albedo: Srgba::RED,
                 ..Default::default()
             }
         )
@@ -82,6 +84,7 @@ fn main() {
         RigidBody::new(
             vec3(0.0, -5.0, 0.0),
             Quat::one(),
+            // Quat::from_angle_x(radians(0.1)),
             0.0/100.0,
             zeroinertia_mass()
         )
@@ -97,7 +100,7 @@ fn main() {
     for i in 0..CUBES {
         bodies.push(physics.add_body(
             RigidBody::new(
-                vec3(0.0, -1.0 + ((i+1) as f32)*2.0, 0.01*i as f32 + 0.00),
+                vec3(0.0, -1.8 + 2.0 + (i as f32)*1.5, 0.00*i as f32 + 0.00),
                 Quat::one(),
                 1.0/100.0,
                 cubeinertia_mass(1.0)
@@ -114,13 +117,16 @@ fn main() {
 
     let mut dtclock = Instant::now();
     window.render_loop(move |mut frame_input| {
-        let dt: f32 = dtclock.elapsed().as_secs_f32();
-        dtclock = Instant::now();
-
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*1.0);
+        let dt: f32 = dtclock.elapsed().as_secs_f32();
+        /* dtclock = Instant::now();
+        physics.update(dt); */
+        if dt > 0.03 {
+            dtclock = Instant::now();
+            physics.update(0.2/50.0);
+        }
 
         base_cube.set_transformation(
             base_body.as_ref().borrow().get_matrix()*Mat4::from_scale(4.5)

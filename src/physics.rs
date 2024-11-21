@@ -245,12 +245,13 @@ impl Physics {
                             contact_peneration = point_diff.dot(-normal);
                             contacts = (contact_inc, contact_inc + contact_peneration * normal);
                         }
-                        println!("{}", contact_peneration);
+                        // println!("{}", contact_peneration);
                         contact_list.push(contacts);
                         depth_list.push(contact_peneration);
                     }
 
                     let n = contact_list.len();
+                    println!("{:#?}", normal);
 
                     self.temp_constraint.push(Box::new(RColl::new(
                         [a.get_body(), b.get_body()],
@@ -261,9 +262,10 @@ impl Physics {
                         // collision_normals[pair_index].unwrap(),
                         normal,
                         vec![depth; n],
+                        // depth_list,
                         // actual_normal,
                         // actual_depth,
-                        0.000000,
+                        0.0000001,
                     )))
                 }
             }

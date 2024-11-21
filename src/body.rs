@@ -17,6 +17,7 @@ macro_rules! body_common {
         fn acc(&self) -> Vec3 {self.acc}
 
         fn update_pos(&mut self, dx: Vec3) {
+            // self.pos_new += dx;
             self.pos += dx;
         }
         fn add_force(&mut self, f: Vec3) {
@@ -84,16 +85,20 @@ macro_rules! rigidbody_common {
         }
         fn iterate(&mut self) {
             // self.pos = self.pos_new;
+            // self.apos_new = self.apos_new.normalize();
+            self.apos = self.apos.normalize()
             // self.apos = self.apos_new;
         }
 
         fn update_apos(&mut self, dq: Quat) {
+            // self.apos_new = dq * self.apos_new;
             self.apos = dq * self.apos;
         }
 
         fn add_apos(&mut self, dq: Quat) {
+            // self.apos_new += dq;
             self.apos += dq;
-            self.apos = self.apos.normalize();
+            // self.apos_new = self.apos_new.normalize();
         }
 
         fn add_force_at(&mut self, f: Vec3, at: Vec3) {

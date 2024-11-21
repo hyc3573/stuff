@@ -267,7 +267,7 @@ fn main() {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
-        physics.update(dt*1.0);
+        physics.update(dt/1.0);
         // println!("{dt}");
 
         let pos = physics.bodies()[1].as_ref().borrow().pos();

@@ -56,7 +56,6 @@ impl Constraint for ParticleFix {
 
     fn dC(&self) -> Vec<Vec3> {
         let mut n = self.bodies()[0].borrow().pos() - self.origin;
-        let n_prev = n;
         if n.magnitude2() > f32::EPSILON*f32::EPSILON {
             n = n.normalize();
         }
