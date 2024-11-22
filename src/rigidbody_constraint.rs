@@ -316,57 +316,69 @@ impl Constraint for RColl {
 
         let r = self.r();
 
-        for i in 0..self.contacts.len() {
-            let v = (self.bodies[0].as_ref().borrow().vel()
-                + self.bodies[0].as_ref().borrow().avel().cross(r[i].0))
-                - (self.bodies[1].as_ref().borrow().vel()
-                    + self.bodies[1].as_ref().borrow().avel().cross(r[i].1));
-            // println!("{:?}", v);
+        let iter = 1;
+        for n in 0..iter {
+            for i in 0..self.contacts.len() {
+                let v = (self.bodies[0].as_ref().borrow().vel()
+                         + self.bodies[0].as_ref().borrow().avel().cross(r[i].0))
+                    - (self.bodies[1].as_ref().borrow().vel()
+                       + self.bodies[1].as_ref().borrow().avel().cross(r[i].1));
+                // println!("{:?}", v);
 
-            let v_normal = normal.dot(v);
-            let v_tangential = v - normal * v_normal;
+                let v_normal = normal.dot(v);
+                println!("b{v_normal}");
+                let v_tangential = v - normal * v_normal;
 
-            if v_normal.abs() > 0.0 {
                 let v_normal_original = normal.dot(self.original_velocity[i]);
                 let e = 0.0;
-                dv_vec[i] += normal * (-v_normal - f32::min(-e * v_normal_original, 0.0));
-            } else {
-                dv_vec[i] += -normal * v_normal;
-            }
+                dv_vec[i] += normal * (-v_normal + f32::min(-e * v_normal_original, 0.0));
 
-            let v_tangential_abs = v_tangential.magnitude();
-            let u = 0.5;
-            if v_tangential_abs > f32::EPSILON {
-                dv_vec[i] -= v_tangential / v_tangential_abs
-                    * f32::min(u * self.lambda[i].abs() / dt / dt, v_tangential_abs);
-            } else {
+                let v_tangential_abs = v_tangential.magnitude();
+                let u = 0.0;
+                if v_tangential_abs > f32::EPSILON {
+                    dv_vec[i] -= v_tangential / v_tangential_abs
+                        * f32::min(u * self.lambda[i].abs() / dt / dt, v_tangential_abs);
+                } else {
+                }
+
+                // let p = dv_vec[j] / self.invmass_sum_vec()[j] / (self.contacts.len() as f32);
+                // let p = dv_vec[i] / self.invmass_sum_vec().iter().sum();
+                let p = dv_vec[i] / self.invmass_sum_vec()[i];
+                // println!("{j}");
+                // println!("{}", self.bodies[0].as_ref().borrow().invmass());
+                // println!("{:?}", p);
+
+                // println!("{j} {}", self.invmass_sum_vec()[j]);
+
+                for (j, body) in self.bodies.iter().enumerate() {
+                    let new_vel = body.as_ref().borrow().vel()
+                        + p * body.as_ref().borrow().invmass() * (if j == 0 { 1.0 } else { -1.0 }); // (self.contacts.len() as f32);
+                    body.as_ref().borrow_mut().set_vel(new_vel);
+                    // body.as_ref().borrow_mut().set_vel(Vec3::zero());
+
+                    let new_avel = body.as_ref().borrow().avel()
+                        + body.as_ref().borrow().invinertia()
+                        * ((if j == 0 { r[i].0 } else { r[i].1 }).cross(p))
+                        * (if j == 0 { 1.0 } else { 1.0 });
+                    body.as_ref().borrow_mut().set_avel(new_avel);
+                    // body.as_ref().borrow_mut().set_avel(Vec3::zero());
+                }
+
+                let v = (self.bodies[0].as_ref().borrow().vel()
+                         + self.bodies[0].as_ref().borrow().avel().cross(r[i].0))
+                    - (self.bodies[1].as_ref().borrow().vel()
+                       + self.bodies[1].as_ref().borrow().avel().cross(r[i].1));
+                // println!("{:?}", v);
+
+                let v_normal = normal.dot(v);
+                println!("a{v_normal}");
             }
         }
 
         // let dv: Vec3 = dv_vec.iter().sum::<Vector3<f32>>()/(self.contacts.len() as f32);
 
-        for j in 0..self.contacts.len() {
-            // let p = dv_vec[j] / self.invmass_sum_vec()[j] / (self.contacts.len() as f32);
-            let p = dv_vec[j] / self.invmass_sum_vec().iter().sum();
-            // let p = dv_vec[j] / self.invmass_sum_vec()[j];
-            // println!("{j}");
-            // println!("{}", self.bodies[0].as_ref().borrow().invmass());
-            // println!("{:?}", p);
-
-            // println!("{j} {}", self.invmass_sum_vec()[j]);
-
-            for (i, body) in self.bodies.iter().enumerate() {
-                let new_vel = body.as_ref().borrow().vel()
-                    + p * body.as_ref().borrow().invmass() * (if i == 0 { -1.0 } else { 1.0 }); // (self.contacts.len() as f32);
-                body.as_ref().borrow_mut().set_vel(new_vel);
-                // body.as_ref().borrow_mut().set_vel(Vec3::zero());
-
-                let new_avel = body.as_ref().borrow().avel()
-                    + body.as_ref().borrow().invinertia()
-                        * ((if i == 0 { r[j].0 } else { r[j].1 }).cross(p))
-                        * (if i == 0 { 1.0 } else { -1.0 });
-                body.as_ref().borrow_mut().set_avel(new_avel);
-            }
+        for i in 0..self.contacts.len() {
+            
         }
 
         // let vel = self.bodies[0].as_ref().borrow().vel();

@@ -116,7 +116,7 @@ fn main() {
     let light1 = DirectionalLight::new(&context, 1.0, Srgba::WHITE, &vec3(0.0, 0.5, 0.5));
 
     let c1b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(0.46491915, -0.783919, 0.003859211),
+        vec3(-0.00492452, -0.004687448, -0.0060487306),
         Quat::from_sv(
             1.0,
             vec3(0.0, 0.0, 0.0)
@@ -125,7 +125,7 @@ fn main() {
         cubeinertia_mass(1.0)
     )));
     let c2b: Rc<RefCell<dyn Body>> = Rc::new(RefCell::new(RigidBody::new(
-        vec3(-0.46162653, -1.453009, 0.023907943),
+        vec3(0.00492452, 0.9908854, 0.006052195),
         Quat::from_sv(
             1.0,
             vec3(0.0, 0.0, 0.0)
@@ -196,9 +196,9 @@ fn main() {
             
             let (normal, depth, va, vb) = epa(&c1c, &c2c, simplex);
 
-            println!("{:?} {:?}", va, vb);
-            let pa = c1b.as_ref().borrow().to_global(va);
-            let pb = c2b.as_ref().borrow().to_global(vb);
+            // println!("{:?}", normal);
+            let pa = va;
+            let pb = vb;
 
             point1.set_transformation(
                 Mat4::from_translation(

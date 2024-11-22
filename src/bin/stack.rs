@@ -19,7 +19,7 @@ use stuff_lib::inertiatensor::*;
 use std::{thread, time};
 use std::time::Duration;
 
-const CUBES: usize = 2;
+const CUBES: usize = 1;
 
 fn main() {
     let window = Window::new(WindowSettings {
@@ -116,16 +116,44 @@ fn main() {
     let bodies = bodies;
 
     let mut dtclock = Instant::now();
+    let mut process_next_frame = true;
+    let mut reflag = true;
+    let mut rapid = false;
     window.render_loop(move |mut frame_input| {
         camera.set_viewport(frame_input.viewport);
         control.handle_events(&mut camera, &mut frame_input.events);
 
+        for event in &frame_input.events {
+            match event {
+                Event::KeyPress { kind, .. } => {
+                    match kind {
+                        Key::Space => {
+                            process_next_frame = !process_next_frame;
+                            reflag = process_next_frame;
+                            rapid = false;
+                        }
+                        Key::ArrowRight => {
+                            process_next_frame = true;
+                            reflag = false;
+                        }
+                        Key::ArrowUp => {
+                            rapid = !rapid;
+                        }
+                        _ => {}
+                    }
+                }
+                _ => {}
+            }
+        }
+
         let dt: f32 = dtclock.elapsed().as_secs_f32();
         /* dtclock = Instant::now();
         physics.update(dt); */
-        if dt > 0.03 {
+        if process_next_frame {
             dtclock = Instant::now();
-            physics.update(0.2/50.0);
+            physics.update(if rapid {dt} else {dt/300.0});
+
+            process_next_frame = reflag;
         }
 
         base_cube.set_transformation(

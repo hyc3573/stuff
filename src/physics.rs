@@ -251,7 +251,12 @@ impl Physics {
                     }
 
                     let n = contact_list.len();
-                    println!("{:#?}", normal);
+                    // println!(
+                    //     "n{:#?} a{:#?} b{:#?}",
+                    //     normal,
+                    //     a.get_body().as_ref().borrow().pos(),
+                    //     b.get_body().as_ref().borrow().pos(),
+                    // );
 
                     self.temp_constraint.push(Box::new(RColl::new(
                         [a.get_body(), b.get_body()],
@@ -261,11 +266,11 @@ impl Physics {
                         // [Vec3::zero(), Vec3::zero()],
                         // collision_normals[pair_index].unwrap(),
                         normal,
-                        vec![depth; n],
+                        vec![depth+TOLERANCE; n],
                         // depth_list,
                         // actual_normal,
                         // actual_depth,
-                        0.0000001,
+                        0.0000000,
                     )))
                 }
             }
@@ -302,10 +307,10 @@ impl Physics {
 
             // Velocity update
             for constraint in &mut self.temp_constraint {
-                constraint.velocity_update(dt);
+                // constraint.velocity_update(dt);
             }
             for constraint in &mut self.constraint {
-                constraint.velocity_update(dt);
+                // constraint.velocity_update(dt);
             }
 
             // let pos = self.bodies[3].as_ref().borrow().pos();

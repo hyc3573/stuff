@@ -465,10 +465,10 @@ pub fn epa(a: &Box<dyn Collider>, b: &Box<dyn Collider>, s: Simplex) -> (Vec3, f
                 // println!("{:?}", b.get_body().as_ref().borrow().apos());
             }
             // return (normal, mindist, a.to_local(pa), b.to_local(pb));
+            // println!("n{:?} a{:?} b{:?}", normal, pa.to_vec(), pb.to_vec());
             return (normal, mindist, pa.to_vec(), pb.to_vec());
         } else {
             mindist_global = mindist;
-            closest_global = closest_triangle;
         }
 
         // expand

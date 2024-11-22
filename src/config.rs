@@ -9,3 +9,5 @@ pub const SUBS: usize = 20;
 
 pub const DAMP: f32 = 0.95;
 pub const ROT_DAMP: f32 = 0.95;
+
+pub const TOLERANCE: f32 = 0.00001;
