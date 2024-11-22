@@ -34,6 +34,13 @@ impl RDist {
         })
     }
 
+    fn local_normals(&self) -> [Vec3; 2] {
+        [ 
+            self.bodies()[0].borrow().apos().invert().rotate_vector(self.dC()[0]),
+            self.bodies()[1].borrow().apos().invert().rotate_vector(-self.dC()[1]),
+        ]
+    }
+
     pub fn new(
         bodies: [Rc<RefCell<dyn Body>>; 2],
         offsets: [Vec3; 2],
@@ -78,7 +85,7 @@ impl Constraint for RDist {
                 0.5 * Quat::from_sv(
                     0.0,
                     self.bodies()[i].as_ref().borrow().invinertia()
-                        * self.true_offsets()[i].cross(self.dC()[i])
+                        * self.offsets[i].cross(self.local_normals()[i])
                         * dlambda,
                 ) * self.bodies()[i].as_ref().borrow().apos(),
             )
@@ -91,15 +98,14 @@ impl Constraint for RDist {
     }
 
     fn invmass_sum(&self) -> f32 {
-        let dC = self.dC();
         let pos = self.points();
         let mut sum: f32 = 0.0;
 
         for i in 0..self.len() {
             sum += self.bodies()[i].as_ref().borrow().invmass()
-                + self.true_offsets()[i].cross(dC[0]).dot(
+                + self.offsets[i].cross(self.local_normals()[i]).dot(
                     self.bodies()[i].as_ref().borrow().invinertia()
-                        * self.true_offsets()[i].cross(dC[0]),
+                        * self.offsets[i].cross(self.local_normals()[i]),
                 );
         }
 
@@ -129,7 +135,7 @@ impl RColl {
         let mut result = Self {
             bodies,
             original_velocity: vec![Vec3::zero(); len],
-            contacts, // global coordinate
+            contacts, // local coordinate
             normal,
             depth,
             lambda: vec![0.0; len],
@@ -152,8 +158,10 @@ impl RColl {
         (0..self.contacts.len())
             .map(|i| {
                 (
-                    self.contacts[i].0 - self.bodies[0].as_ref().borrow().pos(),
-                    self.contacts[i].1 - self.bodies[1].as_ref().borrow().pos(),
+                    // self.bodies[0].as_ref().borrow().apos().rotate_vector(self.contacts[i].0),
+                    // self.bodies[1].as_ref().borrow().apos().rotate_vector(self.contacts[i].1),
+                    self.contacts[i].0,
+                    self.contacts[i].1,
                 )
             })
             .collect()
@@ -166,12 +174,16 @@ impl RColl {
             0.5 * Quat::from_sv(
                 0.0,
                 self.bodies()[0].as_ref().borrow().invinertia()
-                    * r[i].0.cross(self.dC()[0] * dlambda),
+                    * r[i].0.cross(
+                        self.local_normals()[0] * dlambda
+                    ),
             ) * self.bodies()[0].as_ref().borrow().apos(),
             0.5 * Quat::from_sv(
                 0.0,
                 self.bodies()[1].as_ref().borrow().invinertia()
-                    * r[i].1.cross(self.dC()[1] * dlambda),
+                    * r[i].1.cross(
+                        self.local_normals()[1] * dlambda
+                    ),
             ) * self.bodies()[1].as_ref().borrow().apos(),
         )
 
@@ -190,17 +202,24 @@ impl RColl {
                 sum += self.bodies()[0].as_ref().borrow().invmass();
                 sum += self.bodies()[1].as_ref().borrow().invmass();
 
-                sum += r[i].0.cross(self.normal).dot(
-                    self.bodies()[0].as_ref().borrow().invinertia() * r[i].0.cross(self.normal),
+                sum += r[i].0.cross(self.local_normals()[0]).dot(
+                    self.bodies()[0].as_ref().borrow().invinertia() * r[i].0.cross(self.local_normals()[0]),
                 );
 
-                sum += r[i].1.cross(self.normal).dot(
-                    self.bodies()[1].as_ref().borrow().invinertia() * r[i].1.cross(self.normal),
+                sum += r[i].1.cross(self.local_normals()[1]).dot(
+                    self.bodies()[1].as_ref().borrow().invinertia() * r[i].1.cross(self.local_normals()[1]),
                 );
 
                 sum
             })
             .collect()
+    }
+
+    fn local_normals(&self) -> [Vec3; 2] {
+        [ 
+            self.bodies()[0].borrow().apos().invert().rotate_vector(self.dC()[0]),
+            self.bodies()[1].borrow().apos().invert().rotate_vector(-self.dC()[1]),
+        ]
     }
 
     fn C_vec(&self) -> &Vec<f32> {
