@@ -142,7 +142,7 @@ impl RColl {
             compliance,
         };
 
-        let r = result.r();
+        let r = result.local_contact();
 
         for i in 0..result.contacts.len() {
             result.original_velocity[i] = result.bodies[0].as_ref().borrow().vel()
@@ -154,7 +154,7 @@ impl RColl {
         result
     }
 
-    fn r(&self) -> Vec<(Vec3, Vec3)> {
+    fn local_contact(&self) -> Vec<(Vec3, Vec3)> {
         (0..self.contacts.len())
             .map(|i| {
                 (
@@ -167,9 +167,31 @@ impl RColl {
             .collect()
     }
 
+    fn rotated_contact(&self) -> Vec<(Vec3, Vec3)> {
+        (0..self.contacts.len())
+            .map(|i| {
+                (
+                    self.bodies[0].as_ref().borrow().apos().rotate_vector(self.contacts[i].0),
+                    self.bodies[1].as_ref().borrow().apos().rotate_vector(self.contacts[i].1),
+                )
+            })
+            .collect()
+    }
+
+    fn global_contact(&self) -> Vec<(Vec3, Vec3)> {
+        (0..self.contacts.len())
+            .map(|i| {
+                (
+                    self.bodies[0].borrow().to_global(self.contacts[i].0),
+                    self.bodies[1].borrow().to_global(self.contacts[i].1),
+                )
+            })
+            .collect()
+    }
+
     fn dq_vec(&self, dlambda: f32, i: usize) -> (Quat, Quat) {
         // println!("{:?}", r.0.cross(self.dC()[0] * dlambda));
-        let r = self.r();
+        let r = self.local_contact();
         (
             0.5 * Quat::from_sv(
                 0.0,
@@ -182,7 +204,7 @@ impl RColl {
                 0.0,
                 self.bodies()[1].as_ref().borrow().invinertia()
                     * r[i].1.cross(
-                        self.local_normals()[1] * dlambda
+                        -self.local_normals()[1] * dlambda
                     ),
             ) * self.bodies()[1].as_ref().borrow().apos(),
         )
@@ -190,11 +212,11 @@ impl RColl {
         // result[0] = result[0].invert();
         // result[1] = result[1].invert();
         // println!("{} {} {} {} / {} {} {} {}", result[0].v.x, result[0].v.y, result[0].v.z, result[0].s, result[1].v.x, result[1].v.y, result[1].v.z, result[1].s);
-        // vec![Quat::zero(), Quat::zero()]
+        // (Quat::zero(), Quat::zero())
     }
 
     fn invmass_sum_vec(&self) -> Vec<f32> {
-        let r = self.r();
+        let r = self.local_contact();
 
         (0..self.contacts.len())
             .map(|i| {
@@ -299,6 +321,8 @@ impl Constraint for RColl {
             dq_vec[i] = self.dq_vec(dlambda, i);
             dlambda_vec[i] = dlambda;
         }
+
+        println!("{:?}", dq_vec);
         // self.update_lambda(dlambda);
 
         for i in 0..self.contacts.len() {
@@ -333,7 +357,7 @@ impl Constraint for RColl {
         let normal = self.normal;
         let mut dv_vec = vec![Vec3::zero(); self.contacts.len()];
 
-        let r = self.r();
+        let r = self.rotated_contact();
 
         let iter = 1;
         for n in 0..iter {
@@ -359,45 +383,42 @@ impl Constraint for RColl {
                         * f32::min(u * self.lambda[i].abs() / dt / dt, v_tangential_abs);
                 } else {
                 }
-
-                // let p = dv_vec[j] / self.invmass_sum_vec()[j] / (self.contacts.len() as f32);
-                // let p = dv_vec[i] / self.invmass_sum_vec().iter().sum();
-                let p = dv_vec[i] / self.invmass_sum_vec()[i];
-                // println!("{j}");
-                // println!("{}", self.bodies[0].as_ref().borrow().invmass());
-                // println!("{:?}", p);
-
-                // println!("{j} {}", self.invmass_sum_vec()[j]);
-
-                for (j, body) in self.bodies.iter().enumerate() {
-                    let new_vel = body.as_ref().borrow().vel()
-                        + p * body.as_ref().borrow().invmass() * (if j == 0 { 1.0 } else { -1.0 }); // (self.contacts.len() as f32);
-                    body.as_ref().borrow_mut().set_vel(new_vel);
-                    // body.as_ref().borrow_mut().set_vel(Vec3::zero());
-
-                    let new_avel = body.as_ref().borrow().avel()
-                        + body.as_ref().borrow().invinertia()
-                        * ((if j == 0 { r[i].0 } else { r[i].1 }).cross(p))
-                        * (if j == 0 { 1.0 } else { 1.0 });
-                    body.as_ref().borrow_mut().set_avel(new_avel);
-                    // body.as_ref().borrow_mut().set_avel(Vec3::zero());
-                }
-
-                let v = (self.bodies[0].as_ref().borrow().vel()
-                         + self.bodies[0].as_ref().borrow().avel().cross(r[i].0))
-                    - (self.bodies[1].as_ref().borrow().vel()
-                       + self.bodies[1].as_ref().borrow().avel().cross(r[i].1));
-                // println!("{:?}", v);
-
-                let v_normal = normal.dot(v);
-                println!("a{v_normal}");
             }
         }
 
         // let dv: Vec3 = dv_vec.iter().sum::<Vector3<f32>>()/(self.contacts.len() as f32);
 
         for i in 0..self.contacts.len() {
-            
+            // let p = dv_vec[i] / self.invmass_sum_vec()[i] / (self.contacts.len() as f32);
+             let p = dv_vec[i] / self.invmass_sum_vec().iter().sum();
+            // let p = dv_vec[i] / self.invmass_sum_vec()[i];
+            // println!("{j}");
+            // println!("{}", self.bodies[0].as_ref().borrow().invmass());
+            // println!("{:?}", p);
+
+            // println!("{j} {}", self.invmass_sum_vec()[j]);
+
+            for (j, body) in self.bodies.iter().enumerate() {
+                let new_vel = body.as_ref().borrow().vel()
+                    + p * body.as_ref().borrow().invmass() * (if j == 0 { 1.0 } else { -1.0 }); // (self.contacts.len() as f32);
+                // body.as_ref().borrow_mut().set_vel(new_vel);
+                body.as_ref().borrow_mut().set_vel(Vec3::zero());
+
+                let new_avel = body.as_ref().borrow().avel()
+                    + body.as_ref().borrow().invinertia()
+                    * ((if j == 0 { self.local_contact()[i].0 } else { self.local_contact()[i].1 }).cross(body.borrow().apos().invert().rotate_vector(p)))
+                    * (if j == 0 { 1.0 } else { -1.0 });
+                // body.as_ref().borrow_mut().set_avel(new_avel);
+                body.as_ref().borrow_mut().set_avel(Vec3::zero());
+            }
+
+            let v = (self.bodies[0].as_ref().borrow().vel()
+                     + self.bodies[0].as_ref().borrow().avel().cross(r[i].0))
+                - (self.bodies[1].as_ref().borrow().vel()
+                   + self.bodies[1].as_ref().borrow().avel().cross(r[i].1));
+            // println!("{:?}", v);
+
+            let v_normal = normal.dot(v);
         }
 
         // let vel = self.bodies[0].as_ref().borrow().vel();

@@ -98,7 +98,7 @@ macro_rules! rigidbody_common {
         fn add_apos(&mut self, dq: Quat) {
             // self.apos_new += dq;
             self.apos += dq;
-            self.apos = self.apos.normalize();
+            // self.apos = self.apos.normalize();
         }
 
         fn add_force_at(&mut self, f: Vec3, at: Vec3) {

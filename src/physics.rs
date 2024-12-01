@@ -251,6 +251,7 @@ impl Physics {
                     }
 
                     let n = contact_list.len();
+                    // println!("{:?}", contact_list);
                     // println!(
                     //     "n{:#?} a{:#?} b{:#?}",
                     //     normal,
@@ -307,10 +308,10 @@ impl Physics {
 
             // Velocity update
             for constraint in &mut self.temp_constraint {
-                // constraint.velocity_update(dt);
+                constraint.velocity_update(dt);
             }
             for constraint in &mut self.constraint {
-                // constraint.velocity_update(dt);
+                constraint.velocity_update(dt);
             }
 
             // let pos = self.bodies[3].as_ref().borrow().pos();
